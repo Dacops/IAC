@@ -6,8 +6,7 @@
       No true
     </h1>
     <p>
-      No displaytec.asm o circuito utilizado é o circuito do lab3.cir.
-      
+      No displaytec.asm o circuito utilizado é o circuito do lab3.cir. 
       No boneco_a_mexer o circuito utilizado é o circuito do lab3.cir.
     </p>
   </body>
