@@ -29,8 +29,8 @@ MASCARA2   EQU 0F0H		; para isolar os 4 bits de maior peso
 ; ***********************************************************************
 
 ; inicializações
-PLACE	0100H				; este é o endereço (100H) com que o SP deve ser inicializado
-							; O 1.º end. de retorno será armazenado em FFH (100H-2)
+PLACE	1000H				; este é o endereço (1000H) com que o SP deve ser inicializado
+							; O 1.º end. de retorno será armazenado em 0FFFH (1000H-2)
 SP_inicial:					;
 PLACE	0					; o código tem de começar em 0000H
 MOV  	SP, SP_inicial		; inicialização de SP
