@@ -23,6 +23,7 @@ LINHA      EQU 8		; linha a testar (4ª linha, 1000b)
 MASCARA1   EQU 00FH		; para isolar os 4 bits de menor peso
 MASCARA2   EQU 0F0H		; para isolar os 4 bits de maior peso
 
+;yes
 
 ; ***********************************************************************
 ; * Código																*
