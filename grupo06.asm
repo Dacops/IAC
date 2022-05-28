@@ -80,22 +80,22 @@ MOV  	[APAGA_ECRA], R1				; apaga todos os pixels já desenhados (o valor de R1 
 MOV	 	R1, 0			    			; cenário de fundo número 0
 MOV  	[SELECIONA_CENARIO_FUNDO], R1	; seleciona o cenário de fundo
 
-posicao_nave:				; posição original da nave, guarda na memória
-	MOV  	R1, Y_AXIS		; linha da nave
-	MOV 	R2, X_AXIS		; coluna da nave
+posicao_nave:					; posição original da nave, guarda na memória
+	MOV  	R1, Y_AXIS			; linha da nave
+	MOV 	R2, X_AXIS			; coluna da nave
 	MOV 	[ACT_LINHA], R1     ; guardar a linha na memória
-	MOV 	[ACT_COLUNA], R2     ; guardar a coluna na memoria
+	MOV 	[ACT_COLUNA], R2    ; guardar a coluna na memoria
 	
-CALL	desenha_nave		; desenha a nave na posição original
+CALL	desenha_nave			; desenha a nave na posição original
 
 ; corpo principal do programa
 ciclo:
 	MOV		R0, 5			; coloca sempre a tecla premida com um valor default
 	CALL 	teclado
 	CMP		R0, 5			; tecla não foi premida
-	JZ		ciclo			; 
-	CALL 	display
-	CALL	nave
+	JZ		ciclo			
+	CALL 	display			; incrementa/decrementa valor no display
+	CALL	nave			; move nave para a esquerda/direita
 	JMP 	ciclo
 	
 ; rotina return, volta ao corpo principal do programa
@@ -289,7 +289,7 @@ nave:
 
 inverte_para_direita:			; testa limites antes de mexer o boneco
 	MOV		R6, [DEF_BONECO]	; obtém a largura do boneco (primeira WORD da tabela)
-	MOV  	R2, [ACT_COLUNA]			; posição atual da nave
+	MOV  	R2, [ACT_COLUNA]	; posição atual da nave
 	ADD		R6, R2			    ; posição a seguir ao extremo direito do boneco
 	SUB		R6, 1
 	MOV		R5, MAX_COLUNA		; limite direito do ecrã
@@ -300,18 +300,18 @@ inverte_para_direita:			; testa limites antes de mexer o boneco
 
 inverte_para_esquerda:			; testa limites antes de mexer o boneco
 	MOV		R5, MIN_COLUNA		; limite esquerdo do ecrã
-	MOV  	R2, [ACT_COLUNA]			; posição atual da nave
+	MOV  	R2, [ACT_COLUNA]	; posição atual da nave
 	CMP		R2, R5
 	JZ		return
 	MOV		R10, -1				; passa a deslocar-se para a esquerda
 
 pos_atual:						; valores atuais da posição da nave
-	MOV 	R1, [ACT_LINHA]			; usados no processo de apagar a nave
+	MOV 	R1, [ACT_LINHA]		; usados no processo de apagar a nave
 	MOV 	R7, ALTURA
 	MOV 	R5, LARGURA
 apaga_nave:       				; desenha o nave a partir da tabela
 	MOV 	R5, LARGURA
-	MOV		R6, [ACT_COLUNA]			; cópia da coluna da nave
+	MOV		R6, [ACT_COLUNA]	; cópia da coluna da nave
 
 apaga_pixels:       			; desenha os pixels da nave a partir da tabela
 	MOV	 	R3, 0				; para apagar, a cor do pixel é sempre 0
@@ -324,13 +324,13 @@ apaga_pixels:       			; desenha os pixels da nave a partir da tabela
 	ADD  	R1, 1              	; proxima linha
 	SUB  	R7, 1              	; menos uma linha para apagar
 	JNZ  	apaga_nave
-	MOV  	R2, [ACT_COLUNA]			; guardar a coluna na memória
-	MOV  	R1, [ACT_LINHA]			; guardar a linha na memoria
+	MOV  	R2, [ACT_COLUNA]	; guardar a coluna na memória
+	MOV  	R1, [ACT_LINHA]		; guardar a linha na memoria
 
 
 coluna_seguinte:
 	ADD	R2, R10					; para desenhar objeto na coluna seguinte (direita ou esquerda)
-    MOV [ACT_COLUNA], R2     		; atualiza numero da coluna na memória
+    MOV [ACT_COLUNA], R2     	; atualiza numero da coluna na memória
 
 desenha_nave:       			; desenha o nave a partir da tabela
 	MOV		R4, DEF_BONECO		; endereço da tabela que define o nave
