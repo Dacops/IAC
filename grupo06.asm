@@ -354,9 +354,9 @@ desenha_pixels:       			; desenha os pixels da nave a partir da tabela
 	SUB  	R7, 1
 	JNZ  	desenha_pixels
 
-MOV	R11, ATRASO					; atraso para limitar a velocidade de movimento da nave
+MOV	R8, ATRASO					; atraso para limitar a velocidade de movimento da nave
 ciclo_atraso:
-	SUB		R11, 1				; subtrai 1 do valor de atraso
+	SUB		R8, 1				; subtrai 1 do valor de atraso
 	JNZ		ciclo_atraso		; sai do ciclo quando o valor de atraso chegar a 0
 	
 JMP return
