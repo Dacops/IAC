@@ -29,24 +29,21 @@ APAGA_AVISO     		EQU 6040H      ; endereço do comando para apagar o aviso de n
 APAGA_ECRA	 			EQU 6002H      ; endereço do comando para apagar todos os pixels já desenhados
 SELECIONA_CENARIO_FUNDO EQU 6042H      ; endereço do comando para selecionar uma imagem de fundo
 
+Y_AXIS      EQU  28			; linha da nave (em baixo ("chão")
+X_AXIS	    EQU  30			; coluna da nave (a meio do ecrã)
 
-MET_LARGURA EQU 4           ;largura do meteoro
-MET_ALTURA  EQU 4           ;altura do meteoro
 LARGURA		EQU	5			; largura da nave
-ALTURA		EQU	4           ; altura da nave
+ALTURA		EQU	4H          ; altura da nave
 COR_PIXEL1  EQU	0FF6FH		; cor do pixel: vermelho em ARGB (opaco e vermelho no máximo, verde e azul a 0)
 COR_PIXEL2  EQU 0FF3FH		; cores similares a vermelho
 COR_PIXEL3  EQU 0FC3FH		;
 COR_PIXEL4  EQU 0F93FH		;
-COR_PIXEL5  EQU 0F13FH		;cor do pixel: verde em ARGB (opaco e verde no máximo, vermelho e azul a 0)
 
 MIN_COLUNA	EQU  0			; número da coluna mais à esquerda que o objeto pode ocupar
 MAX_COLUNA	EQU  63			; número da coluna mais à direita que o objeto pode ocupar
 ATRASO		EQU	2000H		; atraso para limitar a velocidade de movimento da nave
-NACT_COLUNA	EQU 2004H		; coluna atual da nave
-NACT_LINHA	EQU 2002H		; linha atual da nave
-MACT_COLUNA EQU 2004H		; coluna atual do meteoro
-MACT_LINHA	EQU 2002H		; linha atual do meteoro
+ACT_COLUNA	EQU 2004H		; coluna atual da nave
+ACT_LINHA	EQU 2002H		; linha atual da nave
 
 
 ; ***********************************************************************
@@ -60,25 +57,14 @@ SP_inicial:				; este é o endereço (1200H) com que o SP deve ser
 						; inicializado. O 1.º end. de retorno será 
 						; armazenado em 11FEH (1200H-2)
 						
-DEF_NAVE:				; tabela que define o nave (cor,largura, pos inicial, pixels)
+DEF_BONECO:				; tabela que define o nave (cor, largura, pixels)
 	WORD		LARGURA
 	WORD		ALTURA
-    WORD		28                      ;linha da nave inicial y-axis
-    WORD		30                      ;coluna da nave inicial x-axis
 	WORD		0, 0, COR_PIXEL1, 0, 0
 	WORD		COR_PIXEL2, 0, COR_PIXEL2, 0, COR_PIXEL2
     WORD        COR_PIXEL3, COR_PIXEL3, COR_PIXEL3, COR_PIXEL3, COR_PIXEL3
     WORD        0, COR_PIXEL4, 0, COR_PIXEL4, 0
-
-DEF_METEORO:            ;tabela que define o meteoro (cor, largura,pos inicial,pixels)
-    WORD		MET_LARGURA
-    WORD		MET_ALTURA
-    WORD		3                      ;linha do meteoro inicial y-axis
-    WORD		40                     ;coluna do meteoro inicial x-axis
-    WORD		0, COR_PIXEL5,COR_PIXEL5,0
-    WORD        COR_PIXEL5,COR_PIXEL5,COR_PIXEL5,COR_PIXEL5
-    WORD        COR_PIXEL5,COR_PIXEL5,COR_PIXEL5,COR_PIXEL5
-    WORD        0,COR_PIXEL5,COR_PIXEL5,0
+	
 
 ; ***********************************************************************
 ; * Código																*
@@ -94,63 +80,13 @@ MOV  	[APAGA_ECRA], R1				; apaga todos os pixels já desenhados (o valor de R1 
 MOV	 	R1, 0			    			; cenário de fundo número 0
 MOV  	[SELECIONA_CENARIO_FUNDO], R1	; seleciona o cenário de fundo
 
-
-
-desenha_nave:							; desenha o nave a partir da tabela
-    PUSH     R1                         ; guarda a largura da nave                    
-    PUSH     R2                         ; guarda a altura da nave
-    PUSH     R3                         ; guarda a linha inical da nave
-    PUSH     R5                         ; guarda a coluna inicial da nave                        ;
-    PUSH     R8                         ; auxiliar para a coluna
-    PUSH     R9                         ;
-    PUSH     R10      			
-	MOV		R4, DEF_NAVE		; endereço da tabela que define o nave
-	MOV		R1, [R4]			; obtém a largura da nave
-	ADD 	R4, 2				; endereço da altura da nave (2 porque a largura é uma word)
-	MOV		R2, [R4]        	; obtém a altura da nave
-	ADD		R4, 2				; endereço da linha inical (2 porque a altura é uma word)
-	MOV		R3, [R4]			; guarda da linha inicial
-	ADD		R4, 2				; endereço da coluna inicial
-	MOV		R5, [R4]			;guarda da coluna inicial
-	ADD		R4, 2				;endereco cor do primeiro pixel
-	MOV 	R8, R1				;auxiliar da largura
-	MOV		R9, R2				;auxiliar da altura
-	MOV		R10,R5				;auxiliar da coluna
-	MOV		[NACT_COLUNA], R1   ;guarda coluna na memora
-	MOV		[NACT_LINHA], R2
-	CALL	desenha_objecto
-	POP		R1
-	POP		R2
-	POP		R3
-	POP		R5
-	POP		R8
-	POP		R9
-	POP		R10
-
-
-info_meteoro:
-	MOV		R4, DEF_METEORO		; endereço da tabela que define o nave
-	MOV		R1, [R4]			; obtém a largura da nave
-	ADD 	R4, 2				; endereço da altura da nave (2 porque a largura é uma word)
-	MOV		R2, [R4]        	; obtém a altura da nave
-	ADD		R4, 2				; endereço da linha inical (2 porque a altura é uma word)
-	MOV		R3, [R4]			; guarda da linha inicial
-	ADD		R4, 2				; endereço da coluna inicial
-	MOV		R5, [R4]			;guarda da coluna inicial
-	ADD		R4, 2				;endereco cor do primeiro pixel
-	MOV		R8, R1				;auxilar da largura
-	MOV		R9, R2				;auxiliar da altura
-	MOV		R10,R5				;auxiliar da coluna
-	MOV		[MACT_COLUNA], R1   ;guarda coluna na memoria
-	MOV		[MACT_LINHA], R2
-	CALL	desenha_objecto
-	POP		R1
-	POP		R2
-	POP		R3
-	POP		R5
-	POP		R8
-	POP		R9
-	POP		R10
+posicao_nave:					; posição original da nave, guarda na memória
+	MOV  	R1, Y_AXIS			; linha da nave
+	MOV 	R2, X_AXIS			; coluna da nave
+	MOV 	[ACT_LINHA], R1     ; guardar a linha na memória
+	MOV 	[ACT_COLUNA], R2    ; guardar a coluna na memoria
+	
+CALL	desenha_nave			; desenha a nave na posição original
 
 ; corpo principal do programa
 ciclo:
@@ -352,8 +288,8 @@ nave:
 									; premidas teclas relativas a esta função
 
 inverte_para_direita:			; testa limites antes de mexer o boneco
-	MOV		R6, [DEF_NAVE]	; obtém a largura do boneco (primeira WORD da tabela)
-	MOV  	R2, [NACT_COLUNA]	; posição atual da nave
+	MOV		R6, [DEF_BONECO]	; obtém a largura do boneco (primeira WORD da tabela)
+	MOV  	R2, [ACT_COLUNA]	; posição atual da nave
 	ADD		R6, R2			    ; posição a seguir ao extremo direito do boneco
 	SUB		R6, 1
 	MOV		R5, MAX_COLUNA		; limite direito do ecrã
@@ -364,18 +300,18 @@ inverte_para_direita:			; testa limites antes de mexer o boneco
 
 inverte_para_esquerda:			; testa limites antes de mexer o boneco
 	MOV		R5, MIN_COLUNA		; limite esquerdo do ecrã
-	MOV  	R2, [NACT_COLUNA]	; posição atual da nave
+	MOV  	R2, [ACT_COLUNA]	; posição atual da nave
 	CMP		R2, R5
 	JZ		return
 	MOV		R10, -1				; passa a deslocar-se para a esquerda
 
 pos_atual:						; valores atuais da posição da nave
-	MOV 	R1, [NACT_LINHA]		; usados no processo de apagar a nave
+	MOV 	R1, [ACT_LINHA]		; usados no processo de apagar a nave
 	MOV 	R7, ALTURA
 	MOV 	R5, LARGURA
 apaga_nave:       				; desenha o nave a partir da tabela
 	MOV 	R5, LARGURA
-	MOV		R6, [NACT_COLUNA]	; cópia da coluna da nave
+	MOV		R6, [ACT_COLUNA]	; cópia da coluna da nave
 
 apaga_pixels:       			; desenha os pixels da nave a partir da tabela
 	MOV	 	R3, 0				; para apagar, a cor do pixel é sempre 0
@@ -388,33 +324,35 @@ apaga_pixels:       			; desenha os pixels da nave a partir da tabela
 	ADD  	R1, 1              	; proxima linha
 	SUB  	R7, 1              	; menos uma linha para apagar
 	JNZ  	apaga_nave
-	MOV  	R2, [NACT_COLUNA]	; guardar a coluna na memória
-	MOV  	R1, [NACT_LINHA]		; guardar a linha na memoria
+	MOV  	R2, [ACT_COLUNA]	; guardar a coluna na memória
+	MOV  	R1, [ACT_LINHA]		; guardar a linha na memoria
 
 
 coluna_seguinte:
 	ADD	R2, R10					; para desenhar objeto na coluna seguinte (direita ou esquerda)
-    MOV [NACT_COLUNA], R2     	; atualiza numero da coluna na memória
+    MOV [ACT_COLUNA], R2     	; atualiza numero da coluna na memória
 
+desenha_nave:       			; desenha o nave a partir da tabela
+	MOV		R4, DEF_BONECO		; endereço da tabela que define o nave
+	MOV		R5, [R4]			; obtém a largura da nave
+	ADD 	R4, 2				; endereço da altura da nave (2 porque a largura é uma word)
+	MOV		R7, [R4]        	; obtém a altura da nave
+	ADD		R4, 2				; endereço da cor do 1º pixel (2 porque a altura é uma word)
 
-desenha_objecto:       			; desenha os pixels da nave a partir da tabela
-	PUSH 	R6
-	MOV	 	R6, [R4]			; obtém a cor do próximo pixel da nave
-	MOV  	[DEFINE_LINHA], R3	; seleciona a linha
-	MOV  	[DEFINE_COLUNA], R5	; seleciona a coluna
-	MOV  	[DEFINE_PIXEL], R6	; altera a cor do pixel na linha e coluna selecionadas
+desenha_pixels:       			; desenha os pixels da nave a partir da tabela
+	MOV	 	R3, [R4]			; obtém a cor do próximo pixel da nave
+	MOV  	[DEFINE_LINHA], R1	; seleciona a linha
+	MOV  	[DEFINE_COLUNA], R2	; seleciona a coluna
+	MOV  	[DEFINE_PIXEL], R3	; altera a cor do pixel na linha e coluna selecionadas
 	ADD	 	R4, 2				; endereço da cor do próximo pixel (2 porque cada cor de pixel é uma word)
-	ADD  	R5, 1              	; próxima coluna
-	SUB  	R8, 1				; menos uma coluna para tratar
-	JNZ  	desenha_objecto     	; continua até percorrer toda a largura do objeto
-	MOV  	R8, R1
-	MOV		R5, R10
-	ADD  	R3, 1
-	SUB  	R9, 1
-	JNZ  	desenha_objecto
-	POP		R6
-	RET
-
+	ADD  	R2, 1              	; próxima coluna
+	SUB  	R5, 1				; menos uma coluna para tratar
+	JNZ  	desenha_pixels     	; continua até percorrer toda a largura do objeto
+	MOV  	R5, LARGURA
+	MOV  	R2, [ACT_COLUNA]
+	ADD  	R1, 1
+	SUB  	R7, 1
+	JNZ  	desenha_pixels
 
 MOV	R8, ATRASO					; atraso para limitar a velocidade de movimento da nave
 ciclo_atraso:
