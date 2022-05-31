@@ -37,25 +37,26 @@ ALTURA_NAVE			EQU	4           ; altura da nave
 POS_INICIAL_NAVE_X	EQU 30			; coluna inicial da nave
 POS_INICIAL_NAVE_Y	EQU 28			; linha inicial da nave
 
-LARGURA_MET EQU 4           ; largura do meteoro
-ALTURA_MET  EQU 4           ; altura do meteoro
-POS_INICIAL_MET_X	EQU 40	; coluna inicial do meteoro
-POS_INICIAL_MET_Y	EQU 0	; linha inicial do meteoro
+LARGURA_INIMIGO EQU 5           ; largura do inimigo
+ALTURA_INIMIGO  EQU 5           ; altura do inimigo
+POS_INICIAL_INIMIGO_X	EQU 40	; coluna inicial do inimigo
+POS_INICIAL_INIMIGO_Y	EQU 0	; linha inicial do inimigo
 
 
-COR_PIXEL1  EQU	0FF6FH		; cor do pixel: vermelho em ARGB (opaco e vermelho no máximo, verde e azul a 0)
-COR_PIXEL2  EQU 0FF3FH		; cores similares a vermelho
-COR_PIXEL3  EQU 0FC3FH		;
-COR_PIXEL4  EQU 0F93FH		;
-COR_PIXEL5  EQU 0F13FH		;cor do pixel: verde em ARGB (opaco e verde no máximo, vermelho e azul a 0)
+COR_PIXEL1  EQU	0FF6FH		; cores da nave
+COR_PIXEL2  EQU 0FF3FH
+COR_PIXEL3  EQU 0FC3FH
+COR_PIXEL4  EQU 0F93FH
+COR_PIXEL5  EQU 0F2D3H		; cores do inimigo
+COR_PIXEL6  EQU 0F000H
 
 MIN_COLUNA	EQU  0			; número da coluna mais à esquerda que o objeto pode ocupar
 MAX_COLUNA	EQU  63			; número da coluna mais à direita que o objeto pode ocupar
 ATRASO		EQU	2000H		; atraso para limitar a velocidade de movimento da nave
 NAVE_COLUNA	EQU 2004H		; coluna atual da nave
 NAVE_LINHA	EQU 2002H		; linha atual da nave
-MET_COLUNA EQU 2008H		; coluna atual do meteoro
-MET_LINHA	EQU 2006H		; linha atual do meteoro
+INIM_COLUNA EQU 2008H		; coluna atual do inimigo
+INIM_LINHA	EQU 2006H		; linha atual do inimigo
 
 
 ; ***********************************************************************
@@ -77,13 +78,14 @@ DEF_NAVE:				; tabela que define o nave (cor,largura, pos inicial, pixels)
     WORD        COR_PIXEL3, COR_PIXEL3, COR_PIXEL3, COR_PIXEL3, COR_PIXEL3
     WORD        0, COR_PIXEL4, 0, COR_PIXEL4, 0
 
-DEF_METEORO:            ;tabela que define o meteoro (cor, largura,pos inicial,pixels)
-    WORD		LARGURA_MET
-    WORD		ALTURA_MET
-    WORD		0, COR_PIXEL5,COR_PIXEL5,0
-    WORD        COR_PIXEL5,COR_PIXEL5,COR_PIXEL5,COR_PIXEL5
-    WORD        COR_PIXEL5,COR_PIXEL5,COR_PIXEL5,COR_PIXEL5
-    WORD        0,COR_PIXEL5,COR_PIXEL5,0
+DEF_INIMIGO:            ;tabela que define o inimigo (cor, largura,pos inicial,pixels)
+    WORD		LARGURA_INIMIGO
+    WORD		ALTURA_INIMIGO
+    WORD		COR_PIXEL5, 0, 0, 0, COR_PIXEL5
+    WORD        0, COR_PIXEL5, COR_PIXEL5, COR_PIXEL5, 0
+    WORD        COR_PIXEL5, COR_PIXEL6, COR_PIXEL5, COR_PIXEL6, COR_PIXEL5
+	WORD		COR_PIXEL5, COR_PIXEL5, COR_PIXEL5, COR_PIXEL5, COR_PIXEL5
+    WORD        0, COR_PIXEL5, 0, COR_PIXEL5, 0
 
 ; ***********************************************************************
 ; * Código																*
@@ -109,14 +111,14 @@ desenha_nave_inicial:				; desenha a nave a partir da tabela
 	MOV R3, DEF_NAVE				; endereço da tabela que define a nave
 	CALL desenha_objecto			; faz um desenho inicial da nave
 
-; desenha o meteoro no ecrã no inicio do jogo
-desenha_meteoro_inicial:			; desenha o meteoro a partir da tablea
-	MOV R1, POS_INICIAL_MET_Y
-	MOV [MET_LINHA], R1				; inicializa a linha do meteoro
-	MOV R2, POS_INICIAL_MET_X
-	MOV [MET_COLUNA], R2			; inicializa a coluna do meteoro
-	MOV R3, DEF_METEORO				; endereço da tabela que define o meteoro
-	CALL desenha_objecto			; faz um desenho inicial do meteoro
+; desenha o inimigo no ecrã no inicio do jogo
+desenha_inimigo_inicial:			; desenha o inimigo a partir da tablea
+	MOV R1, POS_INICIAL_INIMIGO_Y
+	MOV [INIM_LINHA], R1				; inicializa a linha do inimigo
+	MOV R2, POS_INICIAL_INIMIGO_X
+	MOV [INIM_COLUNA], R2			; inicializa a coluna do inimigo
+	MOV R3, DEF_INIMIGO				; endereço da tabela que define o inimigo
+	CALL desenha_objecto			; faz um desenho inicial do inimigo
 
 
 ; corpo principal do programa
@@ -133,8 +135,8 @@ ciclo:
 	JZ		mexe_nave
 	CMP 	R0, 1			; tecla da nave
 	JZ		mexe_nave
-	CMP		R0, 4			; tecla do meteoro
-	JZ		mexe_meteoro
+	CMP		R0, 4			; tecla do inimigo
+	JZ		mexe_inimigo
 	JMP 	ciclo
 
 	muda_display:			
@@ -145,8 +147,8 @@ ciclo:
 		CALL	nave			; move nave para a esquerda/direita
 		JMP ciclo
 
-	mexe_meteoro:
-		CALL	meteoro			; move meteoro para baixo
+	mexe_inimigo:
+		CALL	inimigo			; move inimigo para baixo
 		JMP ciclo
 	
 
@@ -388,27 +390,27 @@ RET
 
 
 ; ***********************************************************************
-; * Descrição:			Movimenta o meteoro pixel a pixel (Tecla 4)		*
+; * Descrição:			Movimenta o inimigo pixel a pixel (Tecla 4)		*
 ; * Argumentos:			R0 - Tecla premida (em hexadecimal)				*
 ; *																		*
 ; * Saídas:				????											*
 ; ***********************************************************************		
-meteoro:
+inimigo:
 	CALL premida				; verifica quando a tecla deixa de ser premida
-	MOV R1, [MET_LINHA]			; lê a linha atual do meteoro
-	MOV R4, 24
+	MOV R1, [INIM_LINHA]			; lê a linha atual do inimigo
+	MOV R4, 23
 	CMP R1, R4					; verificar se já antigiu o limite do ecrã
 	JZ 	return2
-	MOV R2, [MET_COLUNA]		; lê a coluna atual do meteoro
-	MOV R3, DEF_METEORO			; endereço da tabela que define o meteoro	
+	MOV R2, [INIM_COLUNA]		; lê a coluna atual do inimigo
+	MOV R3, DEF_INIMIGO			; endereço da tabela que define o inimigo	
 
 
-apaga_meteoro:       			; apaga o meteoro da posição onde estiver
+apaga_inimigo:       			; apaga o inimigo da posição onde estiver
 	CALL apaga_objeto
 
 desenha_linha_seguinte:
 	ADD	R1, 1					; para desenhar objeto na linha seguinte
-    MOV [MET_LINHA], R1     	; atualiza numero da coluna na memória
+    MOV [INIM_LINHA], R1     	; atualiza numero da coluna na memória
 	CALL desenha_objecto
 	
 RET
