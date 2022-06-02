@@ -22,25 +22,26 @@ TEC_COL    EQU 0E000H  		; endereço das colunas do teclado (periférico PIN)
 LINHA      EQU 8			; linha a testar (4ª linha, 1000b)
 MASCARA	   EQU 000FH		; para isolar os 4 bits de menor peso
 
-DEFINE_LINHA    		EQU 600AH      ; endereço do comando para definir a linha
-DEFINE_COLUNA   		EQU 600CH      ; endereço do comando para definir a coluna
-DEFINE_PIXEL    		EQU 6012H      ; endereço do comando para escrever um pixel
-APAGA_AVISO     		EQU 6040H      ; endereço do comando para apagar o aviso de nenhum cenário selecionado
-APAGA_ECRA	 			EQU 6002H      ; endereço do comando para apagar todos os pixels já desenhados
-SELECIONA_CENARIO_FUNDO EQU 6042H      ; endereço do comando para selecionar uma imagem de fundo
+DEFINE_LINHA    EQU 600AH      ; endereço do comando para definir a linha
+DEFINE_COLUNA   EQU 600CH      ; endereço do comando para definir a coluna
+DEFINE_PIXEL    EQU 6012H      ; endereço do comando para escrever um pixel
+APAGA_AVISO     EQU 6040H      ; endereço do comando para apagar o aviso de nenhum cenário selecionado
+APAGA_ECRA	 	EQU 6002H      ; endereço do comando para apagar todos os pixels já desenhados
+VIDEO			EQU 605CH      ; endereço do comando para selecionar o vídeo de fundo em loop
+SOM				EQU 605AH      ; endereço do comando para selecionar efeitos sonoros
 
 
 
 
-LARGURA_NAVE		EQU	5			; largura da nave
-ALTURA_NAVE			EQU	4           ; altura da nave
-POS_INICIAL_NAVE_X	EQU 30			; coluna inicial da nave
-POS_INICIAL_NAVE_Y	EQU 28			; linha inicial da nave
+LARGURA_NAVE			EQU	5		; largura da nave
+ALTURA_NAVE				EQU	4		; altura da nave
+POS_INICIAL_NAVE_X		EQU 30		; coluna inicial da nave
+POS_INICIAL_NAVE_Y		EQU 28		; linha inicial da nave
 
-LARGURA_INIMIGO EQU 5           ; largura do inimigo
-ALTURA_INIMIGO  EQU 5           ; altura do inimigo
-POS_INICIAL_INIMIGO_X	EQU 40	; coluna inicial do inimigo
-POS_INICIAL_INIMIGO_Y	EQU 0	; linha inicial do inimigo
+LARGURA_INIMIGO 		EQU 5    	; largura do inimigo
+ALTURA_INIMIGO  		EQU 5		; altura do inimigo
+POS_INICIAL_INIMIGO_X	EQU 40		; coluna inicial do inimigo
+POS_INICIAL_INIMIGO_Y	EQU 0		; linha inicial do inimigo
 
 
 COR_PIXEL1  EQU	0FF6FH		; cores da nave
@@ -99,7 +100,7 @@ MOV 	[R1], R11      					; inicializa display a 0
 MOV  	[APAGA_AVISO], R1				; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
 MOV  	[APAGA_ECRA], R1				; apaga todos os pixels já desenhados (o valor de R1 não é relevante)
 MOV	 	R1, 0			    			; cenário de fundo número 0
-MOV  	[SELECIONA_CENARIO_FUNDO], R1	; seleciona o cenário de fundo
+MOV  	[VIDEO], R1						; cenário de fundo em loop
 
 
 ; desenha a nave no ecrã no inicio do jogo
@@ -392,12 +393,12 @@ RET
 ; ***********************************************************************
 ; * Descrição:			Movimenta o inimigo pixel a pixel (Tecla 4)		*
 ; * Argumentos:			R0 - Tecla premida (em hexadecimal)				*
-; *																		*
-; * Saídas:				????											*
+; *						2006H - linha atual do inimigo					*
+; * Saídas:				2006H - nova linha atual do inimigo				*
 ; ***********************************************************************		
 inimigo:
 	CALL premida				; verifica quando a tecla deixa de ser premida
-	MOV R1, [INIM_LINHA]			; lê a linha atual do inimigo
+	MOV R1, [INIM_LINHA]		; lê a linha atual do inimigo
 	MOV R4, 23
 	CMP R1, R4					; verificar se já antigiu o limite do ecrã
 	JZ 	return2
@@ -407,6 +408,11 @@ inimigo:
 
 apaga_inimigo:       			; apaga o inimigo da posição onde estiver
 	CALL apaga_objeto
+
+PUSH 	R1
+MOV	 	R1, 1			    	; efeito sonoro do inimigo
+MOV  	[SOM], R1				; efeito sonoro toca
+POP 	R1
 
 desenha_linha_seguinte:
 	ADD	R1, 1					; para desenhar objeto na linha seguinte
@@ -423,8 +429,7 @@ RET
 ; * Argumentos:			R1 - linha					 					*
 ; *						R2 - coluna 									*
 ; *						R3 - tabela que define o objeto					*
-; *																		*
-; * Saídas:				?????											*
+; * Saídas:				NULL											*
 ; ***********************************************************************
 apaga_objeto:       			; desenha os pixels da nave a partir da tabela
 	PUSH 	R1
@@ -453,13 +458,14 @@ apaga_pixels:
 	RET
 
 
-; **********************************************************************
-; DESENHA_OBJETO - Desenha um boneco na linha e coluna indicadas	   *
-;			    com a forma e cor definidas na tabela indicada.		   *	
-; Argumentos:   R1 - linha											   *
-;               R2 - coluna											   *
-;               R3 - tabela que define o objeto						   *
-; **********************************************************************
+; ***********************************************************************
+; * DESENHA_OBJETO - Desenha um boneco na linha e coluna indicadas	   	*
+; *			    	com a forma e cor definidas na tabela indicada.		*	
+; * Argumentos:  	R1 - linha											*
+; *              	R2 - coluna											*
+; *              	R3 - tabela que define o objeto						*
+; *	Saídas:			NULL												*
+; ***********************************************************************
 desenha_objecto:       			; desenha os pixels do objetoe a partir da tabela
 	PUSH 	R1
 	PUSH	R2
@@ -482,19 +488,20 @@ desenha_pixels:
 	MOV 	R8, R4				; reset da largura do objeto
 	ADD  	R1, 1              	; proxima linha
 	SUB  	R5, 1               ; menos uma linha para tratar
-	JNZ  	desenha_pixels		; continua até percurrer a alturaa total do objeto
+	JNZ  	desenha_pixels		; continua até percurrer a altura total do objeto
 	POP 	R3
 	POP 	R2
 	POP 	R1
 	RET
 
 
-; **********************************************************************
-; ESCREVE_PIXEL - Escreve um pixel na linha e coluna indicadas.		   *
-; Argumentos:   R1 - linha											   *
-;               R2 - coluna											   *
-;               R6 - cor do pixel (em formato ARGB de 16 bits)		   *
-; **********************************************************************
+; ***********************************************************************
+; * ESCREVE_PIXEL - Escreve um pixel na linha e coluna indicadas.		*
+; * Argumentos:		R1 - linha											*
+; *              	R2 - coluna											*
+; *              	R6 - cor do pixel (em formato ARGB de 16 bits)		*
+; * Saídas:			NULL												*
+; ***********************************************************************
 escreve_pixel:
 	MOV  	[DEFINE_LINHA], R1	; seleciona a linha
 	MOV  	[DEFINE_COLUNA], R2	; seleciona a coluna
