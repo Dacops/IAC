@@ -15,20 +15,20 @@
 ; ***********************************************************************
 ; * Endereços de Periféricos e Constantes								*
 ; ***********************************************************************
-DISPLAYS   EQU 0A000H  		; endereço dos displays de 7 segmentos (periférico POUT-1)
-TEC_LIN    EQU 0C000H  		; endereço das linhas do teclado (periférico POUT-2)
-TEC_COL    EQU 0E000H  		; endereço das colunas do teclado (periférico PIN)
+DISPLAYS		EQU 0A000H  	; endereço dos displays de 7 segmentos (periférico POUT-1)
+TEC_LIN    		EQU 0C000H  	; endereço das linhas do teclado (periférico POUT-2)
+TEC_COL    		EQU 0E000H  	; endereço das colunas do teclado (periférico PIN)
 
-LINHA      EQU 8			; linha a testar (4ª linha, 1000b)
-MASCARA	   EQU 000FH		; para isolar os 4 bits de menor peso
+LINHA      		EQU 8			; linha a testar (4ª linha, 1000b)
+MASCARA1   		EQU 000FH		; para isolar os 4 bits de menor peso
 
-DEFINE_LINHA    EQU 600AH      ; endereço do comando para definir a linha
-DEFINE_COLUNA   EQU 600CH      ; endereço do comando para definir a coluna
-DEFINE_PIXEL    EQU 6012H      ; endereço do comando para escrever um pixel
-APAGA_AVISO     EQU 6040H      ; endereço do comando para apagar o aviso de nenhum cenário selecionado
-APAGA_ECRA	 	EQU 6002H      ; endereço do comando para apagar todos os pixels já desenhados
-VIDEO			EQU 605CH      ; endereço do comando para selecionar o vídeo de fundo em loop
-SOM				EQU 605AH      ; endereço do comando para selecionar efeitos sonoros
+DEFINE_LINHA    EQU 600AH      	; endereço do comando para definir a linha
+DEFINE_COLUNA   EQU 600CH      	; endereço do comando para definir a coluna
+DEFINE_PIXEL    EQU 6012H      	; endereço do comando para escrever um pixel
+APAGA_AVISO     EQU 6040H     	; endereço do comando para apagar o aviso de nenhum cenário selecionado
+APAGA_ECRA	 	EQU 6002H      	; endereço do comando para apagar todos os pixels já desenhados
+VIDEO			EQU 605CH      	; endereço do comando para selecionar o vídeo de fundo em loop
+SOM				EQU 605AH      	; endereço do comando para selecionar efeitos sonoros
 
 
 
@@ -44,20 +44,22 @@ POS_INICIAL_INIMIGO_X	EQU 40		; coluna inicial do inimigo
 POS_INICIAL_INIMIGO_Y	EQU 0		; linha inicial do inimigo
 
 
-COR_PIXEL1  EQU	0FF6FH		; cores da nave
-COR_PIXEL2  EQU 0FF3FH
-COR_PIXEL3  EQU 0FC3FH
-COR_PIXEL4  EQU 0F93FH
-COR_PIXEL5  EQU 0F2D3H		; cores do inimigo
-COR_PIXEL6  EQU 0F000H
+COR_PIXEL1  	EQU	0FF6FH		; cores da nave
+COR_PIXEL2  	EQU 0FF3FH
+COR_PIXEL3  	EQU 0FC3FH
+COR_PIXEL4  	EQU 0F93FH
+COR_PIXEL5  	EQU 0F2D3H		; cores do inimigo
+COR_PIXEL6  	EQU 0F000H
 
-MIN_COLUNA	EQU  0			; número da coluna mais à esquerda que o objeto pode ocupar
-MAX_COLUNA	EQU  63			; número da coluna mais à direita que o objeto pode ocupar
-ATRASO		EQU	2000H		; atraso para limitar a velocidade de movimento da nave
-NAVE_COLUNA	EQU 2004H		; coluna atual da nave
-NAVE_LINHA	EQU 2002H		; linha atual da nave
-INIM_COLUNA EQU 2008H		; coluna atual do inimigo
-INIM_LINHA	EQU 2006H		; linha atual do inimigo
+MIN_COLUNA		EQU  0			; número da coluna mais à esquerda que o objeto pode ocupar
+MAX_COLUNA		EQU  63			; número da coluna mais à direita que o objeto pode ocupar
+ATRASO			EQU	2000H		; atraso para limitar a velocidade de movimento da nave
+NAVE_COLUNA		EQU 2004H		; coluna atual da nave
+NAVE_LINHA		EQU 2002H		; linha atual da nave
+INIM_LINHA		EQU 2006H		; linha atual do inimigo
+INIM_COLUNA 	EQU 2008H		; coluna atual do inimigo
+DISPLAY			EQU 200AH		; valor atual no display
+
 
 
 ; ***********************************************************************
@@ -65,13 +67,13 @@ INIM_LINHA	EQU 2006H		; linha atual do inimigo
 ; ***********************************************************************
 PLACE       1000H
 pilha:
-	STACK 	100H		; espaço reservado para a pilha 
-						; (200H bytes, pois são 100H words)
-SP_inicial:				; este é o endereço (1200H) com que o SP deve ser 
-						; inicializado. O 1.º end. de retorno será 
-						; armazenado em 11FEH (1200H-2)
+	STACK 	100H; espaço reservado para a pilha 
+				; (200H bytes, pois são 100H words)
+SP_inicial:		; este é o endereço (1200H) com que o SP deve ser 
+				; inicializado. O 1.º end. de retorno será 
+				; armazenado em 11FEH (1200H-2)
 						
-DEF_NAVE:				; tabela que define o nave (cor,largura, pos inicial, pixels)
+DEF_NAVE:		; tabela que define o nave (cor,largura, pos inicial, pixels)
 	WORD		LARGURA_NAVE
 	WORD		ALTURA_NAVE
 	WORD		0, 0, COR_PIXEL1, 0, 0
@@ -79,7 +81,7 @@ DEF_NAVE:				; tabela que define o nave (cor,largura, pos inicial, pixels)
     WORD        COR_PIXEL3, COR_PIXEL3, COR_PIXEL3, COR_PIXEL3, COR_PIXEL3
     WORD        0, COR_PIXEL4, 0, COR_PIXEL4, 0
 
-DEF_INIMIGO:            ;tabela que define o inimigo (cor, largura,pos inicial,pixels)
+DEF_INIMIGO:    ; tabela que define o inimigo (cor, largura,pos inicial,pixels)
     WORD		LARGURA_INIMIGO
     WORD		ALTURA_INIMIGO
     WORD		COR_PIXEL5, 0, 0, 0, COR_PIXEL5
@@ -87,6 +89,12 @@ DEF_INIMIGO:            ;tabela que define o inimigo (cor, largura,pos inicial,p
     WORD        COR_PIXEL5, COR_PIXEL6, COR_PIXEL5, COR_PIXEL6, COR_PIXEL5
 	WORD		COR_PIXEL5, COR_PIXEL5, COR_PIXEL5, COR_PIXEL5, COR_PIXEL5
     WORD        0, COR_PIXEL5, 0, COR_PIXEL5, 0
+	
+VAL_DISPLAY:	; tabela que guarda múltiplos de 5 para usar no display
+	WORD		0H, 5H, 10H, 15H, 20H, 25H, 30H, 35H, 40H, 45H, 50H
+	WORD		55H, 60H, 65H, 70H, 75H, 80H, 85H, 90H, 95H, 100H
+	WORD		105H, 110H, 115H, 120H, 125H, 130H, 135H, 140H
+
 
 ; ***********************************************************************
 ; * Código																*
@@ -95,7 +103,9 @@ DEF_INIMIGO:            ;tabela que define o inimigo (cor, largura,pos inicial,p
 PLACE	0								; o código tem de começar em 0000H
 MOV  	SP, SP_inicial					; inicialização de SP
 MOV  	R1, DISPLAYS  					; endereço do periférico dos displays
-MOV		R11, 0							; inicialização do display
+MOV		R2, VAL_DISPLAY+40
+MOV		[DISPLAY], R2					; valor 100 da tabela de valores possíveis no display
+MOV		R11, [R2]
 MOV 	[R1], R11      					; inicializa display a 0
 MOV  	[APAGA_AVISO], R1				; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
 MOV  	[APAGA_ECRA], R1				; apaga todos os pixels já desenhados (o valor de R1 não é relevante)
@@ -104,22 +114,22 @@ MOV  	[VIDEO], R1						; cenário de fundo em loop
 
 
 ; desenha a nave no ecrã no inicio do jogo
-desenha_nave_inicial:				; desenha a nave a partir da tabela
-	MOV R1, POS_INICIAL_NAVE_Y
-	MOV [NAVE_LINHA], R1			; inicializa a linha da nave
-	MOV R2, POS_INICIAL_NAVE_X
-	MOV [NAVE_COLUNA], R2			; inicializa a coluna da nave
-	MOV R3, DEF_NAVE				; endereço da tabela que define a nave
-	CALL desenha_objecto			; faz um desenho inicial da nave
+desenha_nave_inicial:					; desenha a nave a partir da tabela
+	MOV 	R1, POS_INICIAL_NAVE_Y
+	MOV 	[NAVE_LINHA], R1			; inicializa a linha da nave
+	MOV 	R2, POS_INICIAL_NAVE_X
+	MOV 	[NAVE_COLUNA], R2			; inicializa a coluna da nave
+	MOV 	R3, DEF_NAVE				; endereço da tabela que define a nave
+	CALL 	desenha_objecto				; faz um desenho inicial da nave
 
 ; desenha o inimigo no ecrã no inicio do jogo
-desenha_inimigo_inicial:			; desenha o inimigo a partir da tablea
-	MOV R1, POS_INICIAL_INIMIGO_Y
-	MOV [INIM_LINHA], R1				; inicializa a linha do inimigo
-	MOV R2, POS_INICIAL_INIMIGO_X
-	MOV [INIM_COLUNA], R2			; inicializa a coluna do inimigo
-	MOV R3, DEF_INIMIGO				; endereço da tabela que define o inimigo
-	CALL desenha_objecto			; faz um desenho inicial do inimigo
+desenha_inimigo_inicial:				; desenha o inimigo a partir da tablea
+	MOV 	R1, POS_INICIAL_INIMIGO_Y
+	MOV 	[INIM_LINHA], R1			; inicializa a linha do inimigo
+	MOV 	R2, POS_INICIAL_INIMIGO_X
+	MOV 	[INIM_COLUNA], R2			; inicializa a coluna do inimigo
+	MOV 	R3, DEF_INIMIGO				; endereço da tabela que define o inimigo
+	CALL 	desenha_objecto				; faz um desenho inicial do inimigo
 
 
 ; corpo principal do programa
@@ -155,7 +165,7 @@ ciclo:
 
 
 ; rotina return, volta ao corpo principal do programa
-return1:
+return:
 	RET
 	
 
@@ -171,7 +181,7 @@ teclado:
 	MOV		R2, 0			; output do teclado (colunas)
     MOV		R3, TEC_LIN   	; endereço do periférico das linhas
     MOV  	R4, TEC_COL   	; endereço do periférico das colunas
-   	MOV  	R5, MASCARA   	; para isolar os 4 bits de menor peso
+   	MOV  	R5, MASCARA1   	; para isolar os 4 bits de menor peso
 	MOV  	R6, 4         	; número de linhas
 
 	; lê as 4 linhas do teclado
@@ -182,7 +192,7 @@ teclado:
 		CMP  	R2, 0		; há tecla premida?
 		JNZ		log_lin		; transfoma coluna/linha em m/n em vez de 2^m/n
 		CMP		R1, 0		; já chegou à linha 0?
-		JZ		return1		; volta ao loop inicial
+		JZ		return		; volta ao loop inicial
 		SHR		R1, 1		; se nenhuma tecla premida, repete (muda de linha)
 		JMP		le_linhas	; verifica próxima linha
 		
@@ -226,115 +236,44 @@ premida:
 ; ***********************************************************************
 ; * Descrição:			Incrementa/decrementa o display (Teclas 3/7)	*
 ; * Argumentos:			R0 - Tecla premida (em hexadecimal)				*
-; *						R11 - Valor atual no display					*
-; * Saídas:				R11 - Novo valor no display						*
+; *						200AH - Valor atual no display					*
+; * Saídas:				200AH - Novo valor no display					*
 ; ***********************************************************************
 display:
 	; inicializações
-	MOV  	R1, DISPLAYS  		; endereço do periférico dos displays
-	MOV  	R5, MASCARA   		; para isolar os 4 bits de menor peso
+	MOV		R1, [DISPLAY]		; endereço do valor atual na tabela de valores possíveis no display
 	
 	CMP 	R0, 3				; verifica se a tecla '3' foi premida
     JZ 		incrementa_valor	; incrementa o valor no display
     CMP 	R0, 7				; verifica se a tecla '7' foi premida
     JZ 		decrementa_valor	; decrementa o valor no display
-	RET			; impede que o programa continue caso não forem
+	RET							; impede que o programa continue caso não forem
 								; premidas teclas relativas a esta função
-	
 	
 	; incrementa o valor no display
 	incrementa_valor:
-		CALL premida				; espera até que a tecla deixe de ser premida
-	
-		; verifica antes se se trata de um caso particular
-		; limite máximo (=100)
-		MOV 	R10, 0100H		; inicia R10 a 100
-		CMP 	R11, R10		; R11 é igual a 100?
-		JZ 		escreve_display 
-		
-		; R11 = 99
-		MOV		R10, 0099H		; inicia R10 a 99
-		CMP		R11, R10		; R11 é igual a R10?
-		JZ		inc99		
-		JNZ		inc00
-		
-		; R11 é igual a 99
-		inc99:
-			MOV		R11, 0100H		; R11 passa a 100
-			JMP 	escreve_display 
-		
-		; R11 acaba em 9 (passaria para xxA em hexadecimal)
-		inc00:
-			MOV 	R10, 0009H		; inicia R10 a 9
-			MOV		R9, R11			; copia o registo R11
-			AND		R9, R5			; elimina bits para além dos bits 0-3
-			CMP		R10, R9			; R11 acaba em 9?
-			JZ		inc_par			
-			JNZ		inc_com
-		
-		; procedimento particular
-		inc_par:
-			MOV		R10, 0007H		; inicia R10 a 7
-			ADD		R11, R10		; x9 + 7 = (x+1)0
-			JMP 	escreve_display
-		
-		; procedimento comum
-		inc_com:
-			ADD		R11, 1			; incrementa R11, o valor do display
-			JMP 	escreve_display
-		
+		CALL 	premida				; espera até que a tecla deixe de ser premida
+		ADD		R1, 2				; vai buscar a próxima word na tabela de valores 
+		MOV		[DISPLAY], R1		; possíveis no display (+5)
+		JMP		escreve_display
 		
 	; decrementa o valor no display
 	decrementa_valor:
-		CALL premida				; espera até que a tecla deixe de ser premida
-	
-		; verifica antes se se trata de um caso particular
-		; limite mínimo (=0)
-		MOV 	R10, 0000H		; inicia R10 a 0
-		CMP 	R11, R10		; R11 é igual a 0?
-		JZ 		escreve_display 
+		CALL 	premida				; espera até que a tecla deixe de ser premida
+		MOV		R2, VAL_DISPLAY		; obtém limite inferior do display, 1ª posição
+		CMP		R1, R2				; da tabela (=0)
+		JZ		return
+		SUB		R1, 2				; vai buscar a anterior word na tabela de valores 
+		MOV		[DISPLAY], R1		; possíveis no display (-5)
 		
-		; R11 = 100
-		MOV		R10, 0100H		; inicia R10 a 100
-		CMP		R11, R10		; R11 é igual a R10?
-		JZ		dec99		
-		JNZ		dec00
-		
-		; R11 é igual a 100
-		dec99:
-			MOV		R11, 0099H		; R11 passa a 99
-			JMP 	escreve_display 
-		
-		; R11 acaba em 0 (passaria para xxF em hexadecimal)
-		dec00:
-			MOV 	R10, 0000H		; inicia R10 a 0
-			MOV		R9, R11			; copia o registo R11
-			AND		R9, R5			; elimina bits para além dos bits 0-3
-			CMP		R10, R9			; R11 acaba em 0?
-			JZ		dec_par			
-			JNZ		dec_com
-		
-		; procedimento particular
-		dec_par:
-			MOV		R10, 0007H		; inicia R10 a 7
-			SUB		R11, R10		; x0 - 7 = (x-1)9 (em hexadecimal)
-			JMP 	escreve_display
-		
-		; procedimento comum
-		dec_com:
-			SUB		R11, 1			; decrementa R11, o valor do display
-			JMP 	escreve_display
-	
-	
 	; escreve valor no display
 	escreve_display:
-		MOV 	[R1], R11      	; muda valor no display
-	
-	RET
+		MOV		R1, [DISPLAY]		; obtém atual endereço na tabela de valores de display
+		MOV		R2, [R1]			; obtém valor através do endereço acima
+		MOV 	[DISPLAYS], R2    	; muda valor no display
+		RET
+		
 
-
-return2:
-	RET
 
 		
 ; ***********************************************************************
@@ -350,13 +289,13 @@ nave:
     JZ 		inverte_para_direita	; move para a direita
 
 inverte_para_direita:			; testa limites antes de mexer o boneco
-	MOV		R6, [DEF_NAVE]	; obtém a largura do boneco (primeira WORD da tabela)
+	MOV		R6, [DEF_NAVE]		; obtém a largura do boneco (primeira WORD da tabela)
 	MOV  	R2, [NAVE_COLUNA]	; posição atual da nave
 	ADD		R6, R2			    ; posição a seguir ao extremo direito do boneco
 	SUB		R6, 1
 	MOV		R5, MAX_COLUNA		; limite direito do ecrã
 	CMP		R6, R5
-	JZ		return2
+	JZ		return
 	MOV		R10, 1				; passa a deslocar-se para a direita
 	JMP		info_nave
 
@@ -364,7 +303,7 @@ inverte_para_esquerda:			; testa limites antes de mexer o boneco
 	MOV		R5, MIN_COLUNA		; limite esquerdo do ecrã
 	MOV  	R2, [NAVE_COLUNA]	; posição atual da nave
 	CMP		R2, R5
-	JZ		return2
+	JZ		return
 	MOV		R10, -1				; passa a deslocar-se para a esquerda
 
 info_nave:						; vai buscar as informações da nave
@@ -401,7 +340,7 @@ inimigo:
 	MOV R1, [INIM_LINHA]		; lê a linha atual do inimigo
 	MOV R4, 23
 	CMP R1, R4					; verificar se já antigiu o limite do ecrã
-	JZ 	return2
+	JZ 	return
 	MOV R2, [INIM_COLUNA]		; lê a coluna atual do inimigo
 	MOV R3, DEF_INIMIGO			; endereço da tabela que define o inimigo	
 
