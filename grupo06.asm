@@ -28,9 +28,8 @@ DEFINE_PIXEL    EQU 6012H      	; endereço do comando para escrever um pixel
 APAGA_AVISO     EQU 6040H     	; endereço do comando para apagar o aviso de nenhum cenário selecionado
 APAGA_ECRA	 	EQU 6002H      	; endereço do comando para apagar todos os pixels já desenhados
 VIDEO			EQU 605CH      	; endereço do comando para selecionar o vídeo de fundo em loop
+IMAGEM			EQU 6042H		; endereço do comando para selecionar o imagem de fundo
 SOM				EQU 605AH      	; endereço do comando para selecionar efeitos sonoros
-
-
 
 
 LARGURA_NAVE			EQU	5		; largura da nave
@@ -100,6 +99,13 @@ VAL_DISPLAY:	; tabela que guarda múltiplos de 5 para usar no display
 	WORD		0H, 5H, 10H, 15H, 20H, 25H, 30H, 35H, 40H, 45H, 50H
 	WORD		55H, 60H, 65H, 70H, 75H, 80H, 85H, 90H, 95H, 100H
 	WORD		105H, 110H, 115H, 120H, 125H, 130H, 135H, 140H
+	
+TECLAS:			; tabela que define e relação tecla:função
+	WORD		return, move_esquerda, move_direita, return
+	WORD		inimigo, return, return, return
+	WORD		return, return, return, return
+	WORD		return, return, return, return
+
 
 
 ; ***********************************************************************
@@ -108,19 +114,31 @@ VAL_DISPLAY:	; tabela que guarda múltiplos de 5 para usar no display
 ; inicialização de periféricos					
 PLACE	0								; o código tem de começar em 0000H
 MOV  	SP, SP_inicial					; inicialização de SP
+MOV  	BTE, tab						; inicializa BTE (registo de Base da Tabela de Exceções)
+EI0										; permite interrupções 0
+EI										; permite interrupções (geral)
+
+
+MOV		R1, 0
+MOV  	[APAGA_AVISO], R1				; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
+MOV  	[APAGA_ECRA], R1				; apaga todos os pixels já desenhados (o valor de R1 não é relevante)
+MOV		[IMAGEM], R1					; imagem de início de jogo
+
+; espera pelo início do jogo, tecla B
+inicio_jogo:							
+	CALL	teclado
+	MOV		R2, 0BH
+	CMP 	R0, R2					
+	JNZ		inicio_jogo
+	
+; inicializações de periféricos para o jogo
 MOV  	R1, DISPLAYS  					; endereço do periférico dos displays
 MOV		R2, VAL_DISPLAY+40
 MOV		[DISPLAY], R2					; valor 100 da tabela de valores possíveis no display
 MOV		R11, [R2]
 MOV 	[R1], R11      					; inicializa display a 100
-MOV  	[APAGA_AVISO], R1				; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
-MOV  	[APAGA_ECRA], R1				; apaga todos os pixels já desenhados (o valor de R1 não é relevante)
 MOV	 	R1, 0			    			; cenário de fundo número 0
 MOV  	[VIDEO], R1						; cenário de fundo em loop
-MOV  	BTE, tab						; inicializa BTE (registo de Base da Tabela de Exceções)
-EI0										; permite interrupções 0
-EI										; permite interrupções (geral)
-
 
 ; desenha a nave no ecrã no inicio do jogo
 desenha_nave_inicial:					; desenha a nave a partir da tabela
@@ -143,27 +161,17 @@ desenha_inimigo_inicial:				; desenha o inimigo a partir da tablea
 
 ; corpo principal do programa
 ciclo:
-	MOV		R0, 5			; coloca sempre a tecla premida com um valor default
+	MOV		R0, 0			; coloca sempre a tecla premida com um valor default
 	CALL 	teclado
 	CALL	display
-	CMP 	R0, 0			; tecla da nave
-	JZ		mexe_nave
-	CMP 	R0, 1			; tecla da nave
-	JZ		mexe_nave
-	CMP		R0, 4			; tecla do inimigo
-	JZ		mexe_inimigo
-	JMP 	ciclo
-
-	mexe_nave:
-		CALL	nave			; move nave para a esquerda/direita
-		JMP ciclo
-
-	mexe_inimigo:
-		CALL	inimigo			; move inimigo para baixo
-		JMP ciclo
+	SHL		R0, 1
+	MOV		R1, TECLAS
+	ADD		R1, R0
+	MOV		R2, [R1]
 	
-
-
+	CALL	R2
+	JMP		ciclo
+	
 ; rotina return, volta ao corpo principal do programa
 return:
 	RET
@@ -292,18 +300,12 @@ display:
 
 		
 ; ***********************************************************************
-; * Descrição:			Movimenta a nave de forma contínua (Teclas 0/1)	*
+; * Descrição:			Movimenta a nave de forma contínua (Teclas 1/2)	*
 ; * Argumentos:			R0 - Tecla premida (em hexadecimal)				*
 ; *						2004H - Coluna Atual do Boneco					*
 ; * Saídas:				2004H - Nova coluna Atual do Boneco				*
 ; ***********************************************************************		
-nave:
-	CMP 	R0, 0					; verifica se a tecla '0' foi premida
-    JZ 		inverte_para_esquerda	; move para a esquerda
-    CMP 	R0, 1					; verifica se a tecla '2' foi premida
-    JZ 		inverte_para_direita	; move para a direita
-
-inverte_para_direita:			; testa limites antes de mexer o boneco
+move_direita:			; testa limites antes de mexer o boneco
 	MOV		R6, [DEF_NAVE]		; obtém a largura do boneco (primeira WORD da tabela)
 	MOV  	R2, [NAVE_COLUNA]	; posição atual da nave
 	ADD		R6, R2			    ; posição a seguir ao extremo direito do boneco
@@ -314,7 +316,7 @@ inverte_para_direita:			; testa limites antes de mexer o boneco
 	MOV		R10, 1				; passa a deslocar-se para a direita
 	JMP		info_nave
 
-inverte_para_esquerda:			; testa limites antes de mexer o boneco
+move_esquerda:			; testa limites antes de mexer o boneco
 	MOV		R5, MIN_COLUNA		; limite esquerdo do ecrã
 	MOV  	R2, [NAVE_COLUNA]	; posição atual da nave
 	CMP		R2, R5
