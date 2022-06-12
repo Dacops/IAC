@@ -54,8 +54,8 @@ COR_PIXEL6  	EQU 0F000H
 MIN_COLUNA		EQU  0			; número da coluna mais à esquerda que o objeto pode ocupar
 MAX_COLUNA		EQU  63			; número da coluna mais à direita que o objeto pode ocupar
 ATRASO			EQU	2000H		; atraso para limitar a velocidade de movimento da nave
-NAVE_COLUNA		EQU 2004H		; coluna atual da nave
-NAVE_LINHA		EQU 2002H		; linha atual da nave
+NAVE_COLUNA		EQU 2002H		; coluna atual da nave
+NAVE_LINHA		EQU 2004H		; linha atual da nave
 INIM_LINHA		EQU 2006H		; linha atual do inimigo
 INIM_COLUNA 	EQU 2008H		; coluna atual do inimigo
 DISPLAY			EQU 200AH		; valor atual no display
@@ -72,6 +72,12 @@ pilha:
 SP_inicial:		; este é o endereço (1200H) com que o SP deve ser 
 				; inicializado. O 1.º end. de retorno será 
 				; armazenado em 11FEH (1200H-2)
+
+tab:			; Tabela das rotinas de interrupção
+	WORD int_inimigo	; rotina de atendimento da interrupção 0
+
+evento_int:
+	WORD 0				; se 1, indica que a interrupção 0 ocorreu
 						
 DEF_NAVE:		; tabela que define o nave (cor,largura, pos inicial, pixels)
 	WORD		LARGURA_NAVE
@@ -106,11 +112,14 @@ MOV  	R1, DISPLAYS  					; endereço do periférico dos displays
 MOV		R2, VAL_DISPLAY+40
 MOV		[DISPLAY], R2					; valor 100 da tabela de valores possíveis no display
 MOV		R11, [R2]
-MOV 	[R1], R11      					; inicializa display a 0
+MOV 	[R1], R11      					; inicializa display a 100
 MOV  	[APAGA_AVISO], R1				; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
 MOV  	[APAGA_ECRA], R1				; apaga todos os pixels já desenhados (o valor de R1 não é relevante)
 MOV	 	R1, 0			    			; cenário de fundo número 0
 MOV  	[VIDEO], R1						; cenário de fundo em loop
+MOV  	BTE, tab						; inicializa BTE (registo de Base da Tabela de Exceções)
+EI0										; permite interrupções 0
+EI										; permite interrupções (geral)
 
 
 ; desenha a nave no ecrã no inicio do jogo
@@ -136,12 +145,7 @@ desenha_inimigo_inicial:				; desenha o inimigo a partir da tablea
 ciclo:
 	MOV		R0, 5			; coloca sempre a tecla premida com um valor default
 	CALL 	teclado
-	CMP		R0, 5			; tecla não foi premida
-	JZ		ciclo
-	CMP 	R0, 3			; tecla do display
-	JZ 		muda_display
-	CMP 	R0, 7			; tecla do display
-	JZ 		muda_display
+	CALL	display
 	CMP 	R0, 0			; tecla da nave
 	JZ		mexe_nave
 	CMP 	R0, 1			; tecla da nave
@@ -149,10 +153,6 @@ ciclo:
 	CMP		R0, 4			; tecla do inimigo
 	JZ		mexe_inimigo
 	JMP 	ciclo
-
-	muda_display:			
-		CALL 	display			; incrementa/decrementa valor no display
-		JMP ciclo
 
 	mexe_nave:
 		CALL	nave			; move nave para a esquerda/direita
@@ -240,29 +240,28 @@ premida:
 ; * Saídas:				200AH - Novo valor no display					*
 ; ***********************************************************************
 display:
-	; inicializações
-	MOV		R1, [DISPLAY]		; endereço do valor atual na tabela de valores possíveis no display
-	
-	CMP 	R0, 3				; verifica se a tecla '3' foi premida
-    JZ 		incrementa_valor	; incrementa o valor no display
-    CMP 	R0, 7				; verifica se a tecla '7' foi premida
-    JZ 		decrementa_valor	; decrementa o valor no display
-	RET							; impede que o programa continue caso não forem
-								; premidas teclas relativas a esta função
-	
-	; incrementa o valor no display
-	incrementa_valor:
-		CALL 	premida				; espera até que a tecla deixe de ser premida
-		ADD		R1, 2				; vai buscar a próxima word na tabela de valores 
-		MOV		[DISPLAY], R1		; possíveis no display (+5)
-		JMP		escreve_display
+	PUSH R1
+	PUSH R2
+	PUSH R3
+	PUSH R4
+	PUSH R5
+	PUSH R6		
+
+	MOV  R5, evento_int
+	MOV  R2, [R5]					; valor da variável que diz se houve uma interrupção 
+	CMP  R2, 0
+	JZ   sai_display				; se não houve interrupção, sai
+	MOV  R2, 0
+	MOV  [R5], R2					; coloca a zero o valor da variável que diz se houve uma interrupção (consome evento)
 		
+	; inicializações
+	MOV		R1, [DISPLAY]			; endereço do valor atual na tabela de valores possíveis no display
+	
 	; decrementa o valor no display
 	decrementa_valor:
-		CALL 	premida				; espera até que a tecla deixe de ser premida
 		MOV		R2, VAL_DISPLAY		; obtém limite inferior do display, 1ª posição
 		CMP		R1, R2				; da tabela (=0)
-		JZ		return
+		JZ		return				; ------------ ACABA O JOGO -------------- 
 		SUB		R1, 2				; vai buscar a anterior word na tabela de valores 
 		MOV		[DISPLAY], R1		; possíveis no display (-5)
 		
@@ -271,9 +270,25 @@ display:
 		MOV		R1, [DISPLAY]		; obtém atual endereço na tabela de valores de display
 		MOV		R2, [R1]			; obtém valor através do endereço acima
 		MOV 	[DISPLAYS], R2    	; muda valor no display
-		RET
-		
-
+	
+	sai_display:
+	POP  R6
+	POP  R5
+	POP  R4
+	POP  R3
+	POP  R2
+	POP  R1
+	RET
+	
+	int_inimigo:					; Assinala o evento na componente 0 da variável evento_int
+		PUSH R0
+		PUSH R1
+		MOV  R0, evento_int
+		MOV  R1, 1					; assinala que houve uma interrupção 0
+		MOV  [R0], R1				; na componente 0 da variável evento_int
+		POP  R1
+		POP  R0
+		RFE
 
 		
 ; ***********************************************************************
