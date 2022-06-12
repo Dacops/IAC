@@ -44,15 +44,15 @@ POS_INICIAL_INIMIGO_X	EQU 40		; coluna inicial do inimigo
 POS_INICIAL_INIMIGO_Y	EQU 0		; linha inicial do inimigo
 
 
-COR_PIXEL1  	EQU	0FF6FH		; cores da nave
-COR_PIXEL2  	EQU 0FF3FH
-COR_PIXEL3  	EQU 0FC3FH
-COR_PIXEL4  	EQU 0F93FH
+COR_PIXEL1  	EQU	0F999H		; cores da nave
+COR_PIXEL2  	EQU 0FEEEH
+COR_PIXEL3  	EQU 0FF00H
+COR_PIXEL4		EQU 0F09FH
 COR_PIXEL5  	EQU 0F2D3H		; cores do inimigo
 COR_PIXEL6  	EQU 0F000H
 
-MIN_COLUNA		EQU  0			; número da coluna mais à esquerda que o objeto pode ocupar
-MAX_COLUNA		EQU  63			; número da coluna mais à direita que o objeto pode ocupar
+MIN_COLUNA		EQU 0			; número da coluna mais à esquerda que o objeto pode ocupar
+MAX_COLUNA		EQU 63			; número da coluna mais à direita que o objeto pode ocupar
 ATRASO			EQU	2000H		; atraso para limitar a velocidade de movimento da nave
 NAVE_COLUNA		EQU 2002H		; coluna atual da nave
 NAVE_LINHA		EQU 2004H		; linha atual da nave
@@ -83,9 +83,9 @@ DEF_NAVE:		; tabela que define o nave (cor,largura, pos inicial, pixels)
 	WORD		LARGURA_NAVE
 	WORD		ALTURA_NAVE
 	WORD		0, 0, COR_PIXEL1, 0, 0
-	WORD		COR_PIXEL2, 0, COR_PIXEL2, 0, COR_PIXEL2
-    WORD        COR_PIXEL3, COR_PIXEL3, COR_PIXEL3, COR_PIXEL3, COR_PIXEL3
-    WORD        0, COR_PIXEL4, 0, COR_PIXEL4, 0
+	WORD		0, COR_PIXEL2, COR_PIXEL4, COR_PIXEL2, 0
+    WORD        COR_PIXEL2, COR_PIXEL2, COR_PIXEL1, COR_PIXEL2, COR_PIXEL2
+    WORD        COR_PIXEL5, 0, 0, 0, COR_PIXEL3
 
 DEF_INIMIGO:    ; tabela que define o inimigo (cor, largura,pos inicial,pixels)
     WORD		LARGURA_INIMIGO
