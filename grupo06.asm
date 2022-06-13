@@ -28,6 +28,7 @@ DEFINE_PIXEL    EQU 6012H      	; endereço do comando para escrever um pixel
 APAGA_AVISO     EQU 6040H     	; endereço do comando para apagar o aviso de nenhum cenário selecionado
 APAGA_ECRA	 	EQU 6002H      	; endereço do comando para apagar todos os pixels já desenhados
 VIDEO			EQU 605CH      	; endereço do comando para selecionar o vídeo de fundo em loop
+PARA_VIDEO		EQU 6066H		; endereço do comando para remover o vídeo de fundo
 IMAGEM			EQU 6042H		; endereço do comando para selecionar o imagem de fundo
 SOM				EQU 605AH      	; endereço do comando para selecionar efeitos sonoros
 
@@ -104,7 +105,7 @@ TECLAS:			; tabela que define e relação tecla:função
 	WORD		return, move_esquerda, move_direita, return
 	WORD		inimigo, return, return, return
 	WORD		return, return, return, return
-	WORD		return, return, return, return
+	WORD		return, pause, game_over, return
 
 
 
@@ -123,17 +124,58 @@ MOV		R1, 0
 MOV  	[APAGA_AVISO], R1				; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
 MOV  	[APAGA_ECRA], R1				; apaga todos os pixels já desenhados (o valor de R1 não é relevante)
 MOV		[IMAGEM], R1					; imagem de início de jogo
+JMP		inicio_jogo
+
+
+; pausa o jogo
+pause:
+	MOV		R1, 2
+	MOV  	[APAGA_AVISO], R1			; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
+	MOV  	[APAGA_ECRA], R1			; apaga todos os pixels já desenhados (o valor de R1 não é relevante)
+	MOV		[IMAGEM], R1				; imagem de início de jogo
+	MOV		R1, 0
+	MOV		[PARA_VIDEO], R1			; remove o vídeo de fundo
+	CALL	premida
+	
+pause_loop:
+	MOV		R2, 0						; valor default do teclado
+	CALL	teclado
+	MOV		R2, 0DH
+	CMP 	R0, R2
+	JNZ		pause_loop
+	CALL	premida
+	
+	; valores anteriores
+	MOV		R2, [DISPLAY]				; último valor no display
+	MOV  	R1, DISPLAYS  				; endereço do periférico dos displays
+	MOV 	[R1], R11      				; inicializa display a 100
+	
+	MOV	 	R1, 0			    		; cenário de fundo número 0
+	MOV  	[VIDEO], R1					; cenário de fundo em loop
+	
+	MOV 	R1, [NAVE_LINHA]			; linha atual da nave
+	MOV 	R2, [NAVE_COLUNA]			; coluna atual da nave
+	MOV 	R3, DEF_NAVE				; endereço da tabela que define a nave
+	CALL 	desenha_objecto				; desenha a nave
+
+	MOV 	R1, [INIM_LINHA]			; linha atual do inimigo
+	MOV 	R2, [INIM_COLUNA]			; coluna atual do inimigo
+	MOV 	R3, DEF_INIMIGO				; endereço da tabela que define o inimigo
+	CALL 	desenha_objecto				; faz um desenho inicial do inimigo
+	
+	JMP		ciclo
+
 
 ; espera pelo início do jogo, tecla B
 inicio_jogo:							
 	CALL	teclado
-	MOV		R2, 0BH
+	MOV		R2, 0CH
 	CMP 	R0, R2					
 	JNZ		inicio_jogo
 	
 ; inicializações de periféricos para o jogo
 MOV  	R1, DISPLAYS  					; endereço do periférico dos displays
-MOV		R2, VAL_DISPLAY+40
+MOV		R2, VAL_DISPLAY+40				
 MOV		[DISPLAY], R2					; valor 100 da tabela de valores possíveis no display
 MOV		R11, [R2]
 MOV 	[R1], R11      					; inicializa display a 100
@@ -171,11 +213,7 @@ ciclo:
 	
 	CALL	R2
 	JMP		ciclo
-	
-; rotina return, volta ao corpo principal do programa
-return:
-	RET
-	
+
 
 ; ***********************************************************************
 ; * Descrição:			Obtém tecla premida								*
@@ -268,8 +306,9 @@ display:
 	; decrementa o valor no display
 	decrementa_valor:
 		MOV		R2, VAL_DISPLAY		; obtém limite inferior do display, 1ª posição
-		CMP		R1, R2				; da tabela (=0)
-		JZ		return				; ------------ ACABA O JOGO -------------- 
+		ADD		R2, 2				; adiciona +2, 2ª posição =5, quando decresce perde
+		CMP		R1, R2				; da tabela (=5 - 5 = 0)
+		JZ		game_over			; energia a 0, perde o jogo
 		SUB		R1, 2				; vai buscar a anterior word na tabela de valores 
 		MOV		[DISPLAY], R1		; possíveis no display (-5)
 		
@@ -298,7 +337,26 @@ display:
 		POP  R0
 		RFE
 
-		
+
+; rotinas + ou - a meio do programa para evitar calls a uma distância maior de 100H, dá erro 
+
+; rotina return, volta ao corpo principal do programa
+return:
+	RET
+	
+; jogo terminado
+game_over:
+	MOV		R1, 1
+	MOV  	[APAGA_AVISO], R1				; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
+	MOV  	[APAGA_ECRA], R1				; apaga todos os pixels já desenhados (o valor de R1 não é relevante)
+	MOV		[IMAGEM], R1					; imagem de início de jogo
+	MOV		R1, 0
+	MOV		[PARA_VIDEO], R1				; remove o vídeo de fundo
+	
+end_loop:
+	JMP		end_loop	
+
+	
 ; ***********************************************************************
 ; * Descrição:			Movimenta a nave de forma contínua (Teclas 1/2)	*
 ; * Argumentos:			R0 - Tecla premida (em hexadecimal)				*
