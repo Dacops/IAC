@@ -234,7 +234,7 @@ TECLAS:			; tabela que define a relação tecla:função
 	WORD		return, move_esquerda, move_direita, return
 	WORD		inimigo, return, return, return
 	WORD		return, return, return, return
-	WORD		return, pause, return, game_over
+	WORD		return, pause, game_over, return
 
 
 
@@ -362,6 +362,7 @@ end_loop:
 	CALL 	teclado
 	MOV		R2, 0CH
 	CMP		R0, R2
+	CALL	premida
 	JZ		prepara_ecra
 	JMP		end_loop
 
@@ -387,6 +388,7 @@ reinicia_valores:
 ; ***********************************************************************
 teclado:
 	; inicializações
+	MOV		R0, 0			; valor de saída default
 	MOV 	R1, LINHA		; linha inicial (4ª linha = 1000b)
 	MOV		R2, 0			; output do teclado (colunas)
     MOV		R3, TEC_LIN   	; endereço do periférico das linhas
