@@ -78,13 +78,9 @@ tab:			; Tabela das rotinas de interrupção
 	WORD int_missil
 	WORD int_energia
 
-evento_int_inimigo:
+evento_int:
 	WORD 0				; se 1, indica que a interrupção 0 ocorreu
-
-evento_int_missil:
 	WORD 0
-
-evento_int_energia:
 	WORD 0
 
 
@@ -306,7 +302,8 @@ display:
 	PUSH R5
 	PUSH R6		
 
-	MOV  R5, evento_int_energia
+	MOV  R5, evento_int
+	ADD	 R5, 4
 	MOV  R2, [R5]					; valor da variável que diz se houve uma interrupção 
 	CMP  R2, 0
 	JZ   sai_display				; se não houve interrupção, sai
@@ -344,7 +341,7 @@ display:
 	int_inimigo:					; Assinala o evento na componente 0 da variável evento_int
 		PUSH R0
 		PUSH R1
-		MOV  R0, evento_int_inimigo
+		MOV  R0, evento_int
 		MOV  R1, 1					; assinala que houve uma interrupção 0
 		MOV  [R0], R1				; na componente 0 da variável evento_int
 		POP  R1
@@ -355,7 +352,8 @@ display:
 	int_missil:					; Assinala o evento na componente 0 da variável evento_int
 		PUSH R0
 		PUSH R1
-		MOV  R0, evento_int_missil
+		MOV  R0, evento_int
+		ADD	 R0, 2
 		MOV  R1, 1					; assinala que houve uma interrupção 0
 		MOV  [R0], R1				; na componente 0 da variável evento_int
 		POP  R1
@@ -366,7 +364,8 @@ display:
 	int_energia:					; Assinala o evento na componente 0 da variável evento_int
 		PUSH R0
 		PUSH R1
-		MOV  R0, evento_int_energia
+		MOV  R0, evento_int
+		ADD  R0, 4
 		MOV  R1, 1					; assinala que houve uma interrupção 0
 		MOV  [R0], R1				; na componente 0 da variável evento_int
 		POP  R1
