@@ -38,8 +38,7 @@ ALTURA_NAVE				EQU	4		; altura da nave
 LINHA_INICIAL_NAVE		EQU 28
 COLUNA_INICIAL_NAVE		EQU 30
 
-LARGURA_INIMIGO 		EQU 5    	; largura do inimigo
-ALTURA_INIMIGO  		EQU 5		; altura do inimigo
+
 LINHA_INICIAL_INIM		EQU 0
 COLUNA_INICIAL_INIM		EQU 40
 
@@ -73,27 +72,27 @@ ALTURA_ENERGIA_ENORME	EQU 5
 LARGURA_EXPLOSAO		EQU 5
 ALTURA_EXPLOSAO			EQU 5
 
-LARGURA_TIRO			EQU 1
-ALTURA_TIRO				EQU 1
+LARGURA_MISSIL			EQU 1
+ALTURA_MISSIL			EQU 1
 
 
-COR_BRANCO 		EQU 0FEEEH
-COR_AZUL		EQU 0F09FH
-COR_VERDE  		EQU 0F2D3H
-COR_PRETO  		EQU 0F000H
-COR_CINZENTO	EQU 0FCCCH		
-COR_VERMELHO	EQU 0FF31H
-COR_AMARELO		EQU 0FFF6H
-COR_ROSA		EQU 0FF7FH
-COR_ROXO		EQU 0FB6FH
-COR_LARANJA		EQU 0FFA2H
+COR_BRANCO 			EQU 0FEEEH
+COR_AZUL			EQU 0F09FH
+COR_VERDE  			EQU 0F2D3H
+COR_PRETO  			EQU 0F000H
+COR_CINZENTO		EQU 0FCCCH		
+COR_VERMELHO		EQU 0FF31H
+COR_AMARELO			EQU 0FFF6H
+COR_ROSA			EQU 0FF7FH
+COR_ROXO			EQU 0FB6FH
+COR_LARANJA			EQU 0FFA2H
 
-MIN_COLUNA		EQU 0			; número da coluna mais à esquerda que o objeto pode ocupar
-MAX_COLUNA		EQU 63			; número da coluna mais à direita que o objeto pode ocupar
+MIN_COLUNA			EQU 0			; número da coluna mais à esquerda que o objeto pode ocupar
+MAX_COLUNA			EQU 63			; número da coluna mais à direita que o objeto pode ocupar
 
-ATRASO			EQU	2000H		; atraso para limitar a velocidade de movimento da nave
-DISPLAY_INICIAL EQU 0
-
+ATRASO				EQU	3000H		; atraso para limitar a velocidade de movimento da nave
+DISPLAY_INICIAL 	EQU 0
+LINHA_LIMITE_MISSIL EQU 0
 
 ; ***********************************************************************
 ; * Variáveis Globais						  							*
@@ -102,10 +101,12 @@ PLACE 			2000H
 
 NAVE_COLUNA:  	WORD COLUNA_INICIAL_NAVE		; coluna atual da nave
 NAVE_LINHA:		WORD LINHA_INICIAL_NAVE 		; linha atual da nave
+MISSIL_COLUNA:  WORD 0							; linha atual do missil
+MISSIL_LINHA:	WORD 0							; coluna atual do missil
 INIM_COLUNA:	WORD COLUNA_INICIAL_INIM 		; linha atual do inimigo
 INIM_LINHA: 	WORD LINHA_INICIAL_INIM  		; coluna atual do inimigo
 DISPLAY:		WORD DISPLAY_INICIAL			; valor atual no display
-
+EXISTE_MISSIL:  WORD 0							; 1 se já existir um missil no ecrã
 
 
 ; ***********************************************************************
@@ -217,9 +218,9 @@ DEF_EXPLOSAO:
 	WORD		COR_LARANJA, 0, COR_AZUL, 0, COR_ROXO
 	WORD		0, COR_ROSA, 0, COR_VERDE, 0
 
-DEF_TIRO:
-	WORD		LARGURA_TIRO
-	WORD		ALTURA_TIRO
+DEF_MISSIL:
+	WORD		LARGURA_MISSIL
+	WORD		ALTURA_MISSIL
 	WORD		COR_AMARELO
 
 
@@ -231,10 +232,10 @@ VAL_DISPLAY:	; tabela que guarda múltiplos de 5 para usar no display
 	WORD		105H, 110H, 115H, 120H, 125H, 130H, 135H, 140H
 	
 TECLAS:			; tabela que define a relação tecla:função
-	WORD		return, move_esquerda, move_direita, return
+	WORD		return, move_esquerda, move_direita, missil
 	WORD		inimigo, return, return, return
 	WORD		return, return, return, return
-	WORD		return, pause, game_over, return
+	WORD		return, pause, return, game_over_pedido
 
 
 
@@ -297,9 +298,8 @@ pause_loop:
 	JMP		ciclo
 
 
-
 ; espera pelo início do jogo, tecla C
-inicio_jogo:							
+inicio_jogo:					
 	CALL	teclado
 	MOV		R2, 0CH
 	CMP 	R0, R2					
@@ -338,6 +338,7 @@ ciclo:
 	MOV		R0, 0			; coloca sempre a tecla premida com um valor default
 	CALL 	teclado
 	CALL	display
+	CALL	move_missil
 	SHL		R0, 1
 	MOV		R1, TECLAS
 	ADD		R1, R0
@@ -349,22 +350,10 @@ ciclo:
 
 
 ; jogo terminado -----------------------------------------------------------------------------
-game_over:
-	MOV		R1, 1
-	MOV  	[APAGA_AVISO], R1				; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
+limpa_ecra:
 	MOV  	[APAGA_ECRA], R1				; apaga todos os pixels já desenhados (o valor de R1 não é relevante)
-	MOV		[IMAGEM], R1					; imagem de início de jogo
 	MOV		R1, 0
 	MOV		[PARA_VIDEO], R1				; remove o vídeo de fundo
-	CALL 	reinicia_valores
-	
-end_loop:
-	CALL 	teclado
-	MOV		R2, 0CH
-	CMP		R0, R2
-	CALL	premida
-	JZ		prepara_ecra
-	JMP		end_loop
 
 reinicia_valores:
 	PUSH	R1
@@ -375,7 +364,25 @@ reinicia_valores:
 	MOV 	R1, DISPLAY_INICIAL
 	MOV		[DISPLAY], R1
 	POP 	R1
-	RET
+
+end_loop:
+	CALL 	teclado
+	MOV		R2, 0BH							; tecla B para reiniciar o jogo
+	CMP		R0, R2
+	JZ		prepara_ecra					; volta ao inicio do jogo
+	JMP		end_loop
+
+game_over_pedido:
+	MOV		R1, 1
+	MOV  	[APAGA_AVISO], R1				; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
+	MOV		[IMAGEM], R1					; imagem de game over
+	CALL 	limpa_ecra
+	
+game_over_energia:
+	MOV		R1, 1
+	MOV  	[APAGA_AVISO], R1				; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
+	MOV		[IMAGEM], R1					; imagem de game over
+	CALL 	limpa_ecra
 
 ;-------------------------------------------------------------------------------------
 
@@ -388,7 +395,6 @@ reinicia_valores:
 ; ***********************************************************************
 teclado:
 	; inicializações
-	MOV		R0, 0			; valor de saída default
 	MOV 	R1, LINHA		; linha inicial (4ª linha = 1000b)
 	MOV		R2, 0			; output do teclado (colunas)
     MOV		R3, TEC_LIN   	; endereço do periférico das linhas
@@ -466,11 +472,22 @@ display:
 	MOV  R2, 0
 	MOV  [R5], R2					; coloca a zero o valor da variável que diz se houve uma interrupção (consome evento)
 		
-	; inicializações
-	MOV		R1, [DISPLAY]			; endereço do valor atual na tabela de valores possíveis no display
+	CALL	decrementa_valor
 	
-	; decrementa o valor no display
+	sai_display:
+	POP  R6
+	POP  R5
+	POP  R4
+	POP  R3
+	POP  R2
+	POP  R1
+	RET
+
+; decrementa o valor no display
 	decrementa_valor:
+		PUSH	R1
+		PUSH	R2
+		MOV		R1, [DISPLAY]			; endereço do valor atual na tabela de valores possíveis no display
 		SUB		R1, 2				; vai buscar a anterior word na tabela de valores (-5)
 		MOV		[DISPLAY], R1		; novo valor de energia
 		
@@ -481,21 +498,51 @@ display:
 		MOV 	[DISPLAYS], R2    	; muda valor no display
 		
 	MOV		R2, VAL_DISPLAY
-	CMP		R1, R2				; chega ao início da tabela, energia = 0
-	JZ		game_over			; energia a 0, perde o jogo
-	
-	sai_display:
-	POP  R6
-	POP  R5
-	POP  R4
-	POP  R3
-	POP  R2
-	POP  R1
+	CMP		R1, R2					; chega ao início da tabela, energia = 0
+	JZ		game_over_energia		; energia a 0, perde o jogo
+	POP		R2
+	POP 	R1
 	RET
-	
+
+;-------------------------------------------------------------------------------
+move_missil:
+	MOV		R1, [EXISTE_MISSIL]
+	CMP		R1, 1
+	JNZ		return						; se não existir missil, sai
+	MOV  	R5, evento_int_missil
+	MOV 	R2, [R5]					; valor da variável que diz se houve uma interrupção 
+	CMP  	R2, 0
+	JZ		return						; se não houve interrupção, sai
+	MOV  	R2, 0
+	MOV  	[R5], R2					; coloca a zero o valor da variável que diz 
+										; se houve uma interrupção (consome evento)
+
+info_missil:
+	MOV		R1, [MISSIL_LINHA]
+	MOV		R2, [MISSIL_COLUNA]
+	MOV		R3, DEF_MISSIL
+	MOV		R5, LINHA_LIMITE_MISSIL
+	CMP 	R1, R5
+	JZ		destroi_missil
+
+desenha_missil:
+	CALL	apaga_objeto
+	SUB		R1, 1
+	CALL	desenha_objecto
+	MOV 	[MISSIL_LINHA], R1
+	MOV		[MISSIL_COLUNA], R2
+	RET
+
+destroi_missil:
+	MOV		R5, 0
+	MOV 	[EXISTE_MISSIL], R5
+	CALL	apaga_objeto
+	RET
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;--------------------------------------------------------------------------
+
+; INTERRUPÇOES  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	int_inimigo:					; Assinala o evento na componente 0 da variável evento_int
 		PUSH R0
 		PUSH R1
@@ -527,7 +574,7 @@ display:
 		POP  R1
 		POP  R0
 		RFE
-
+;--------------------------------------------------------------------------------------------------------
 
 ; rotinas + ou - a meio do programa para evitar calls a uma distância maior de 100H, dá erro 
 
@@ -536,6 +583,28 @@ return:
 	RET
 
 
+;-------------------------------------------------------------------------------------
+missil:
+	MOV		R1, [EXISTE_MISSIL]				; verifica se já existe um missil no ecrã
+	CMP		R1, 1
+	JZ		return							; se existir não faz nada
+	MOV		R1, 1
+	MOV		[EXISTE_MISSIL], R1				; se não existir muda a variável para passar a existir
+	MOV		R1, [NAVE_LINHA]
+	MOV		R2, [NAVE_COLUNA]
+	ADD		R2, 2							; para centrar o missil na nave
+	SUB		R1, 1
+	MOV		R3, DEF_MISSIL
+	CALL	desenha_objecto					; desenha o missil
+	MOV		[MISSIL_LINHA], R1
+	MOV		[MISSIL_COLUNA], R2
+	CALL	decrementa_valor				; disparar um missil faz perder 5 unidades de energia
+	RET
+
+; DECRESCE 5 UNIDADES NO DISPLAY
+
+
+;-------------------------------------------------------------------------------------
 
 
 	
@@ -566,7 +635,7 @@ move_esquerda:			; testa limites antes de mexer o boneco
 info_nave:						; vai buscar as informações da nave
 	MOV R1, [NAVE_LINHA]		; lê a linha atual da nave
 	MOV R2, [NAVE_COLUNA]		; lê a coluna atual da nave
-	MOV R3, DEF_NAVE			; enderaço da tabela que define a nave
+	MOV R3, DEF_NAVE			; endereço da tabela que define a nave
 
 apaga_nave:       				; apaga a nave da posição onde estiver
 	CALL apaga_objeto
