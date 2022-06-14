@@ -146,9 +146,10 @@ pause_loop:
 	CALL	premida
 	
 	; valores anteriores
-	MOV		R2, [DISPLAY]				; último valor no display
+	MOV		R2, [DISPLAY]				; endereço do último valor no display
+	MOV		R3, [R2]					; último valor no display
 	MOV  	R1, DISPLAYS  				; endereço do periférico dos displays
-	MOV 	[R1], R11      				; inicializa display a 100
+	MOV 	[R1], R3      				; inicializa display a 100
 	
 	MOV	 	R1, 0			    		; cenário de fundo número 0
 	MOV  	[VIDEO], R1					; cenário de fundo em loop
@@ -305,18 +306,18 @@ display:
 	
 	; decrementa o valor no display
 	decrementa_valor:
-		MOV		R2, VAL_DISPLAY		; obtém limite inferior do display, 1ª posição
-		ADD		R2, 2				; adiciona +2, 2ª posição =5, quando decresce perde
-		CMP		R1, R2				; da tabela (=5 - 5 = 0)
-		JZ		game_over			; energia a 0, perde o jogo
-		SUB		R1, 2				; vai buscar a anterior word na tabela de valores 
-		MOV		[DISPLAY], R1		; possíveis no display (-5)
+		SUB		R1, 2				; vai buscar a anterior word na tabela de valores (-5)
+		MOV		[DISPLAY], R1		; novo valor de energia
 		
 	; escreve valor no display
 	escreve_display:
 		MOV		R1, [DISPLAY]		; obtém atual endereço na tabela de valores de display
 		MOV		R2, [R1]			; obtém valor através do endereço acima
 		MOV 	[DISPLAYS], R2    	; muda valor no display
+		
+	MOV		R2, VAL_DISPLAY
+	CMP		R1, R2				; chega ao início da tabela, energia = 0
+	JZ		game_over			; energia a 0, perde o jogo
 	
 	sai_display:
 	POP  R6
