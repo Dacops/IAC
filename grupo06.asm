@@ -74,10 +74,20 @@ SP_inicial:		; este é o endereço (1200H) com que o SP deve ser
 				; armazenado em 11FEH (1200H-2)
 
 tab:			; Tabela das rotinas de interrupção
-	WORD int_inimigo	; rotina de atendimento da interrupção 0
+	WORD int_inimigo
+	WORD int_missil
+	WORD int_energia
 
-evento_int:
+evento_int_inimigo:
 	WORD 0				; se 1, indica que a interrupção 0 ocorreu
+
+evento_int_missil:
+	WORD 0
+
+evento_int_energia:
+	WORD 0
+
+
 						
 DEF_NAVE:		; tabela que define o nave (cor,largura, pos inicial, pixels)
 	WORD		LARGURA_NAVE
@@ -101,7 +111,7 @@ VAL_DISPLAY:	; tabela que guarda múltiplos de 5 para usar no display
 	WORD		55H, 60H, 65H, 70H, 75H, 80H, 85H, 90H, 95H, 100H
 	WORD		105H, 110H, 115H, 120H, 125H, 130H, 135H, 140H
 	
-TECLAS:			; tabela que define e relação tecla:função
+TECLAS:			; tabela que define a relação tecla:função
 	WORD		return, move_esquerda, move_direita, return
 	WORD		inimigo, return, return, return
 	WORD		return, return, return, return
@@ -117,7 +127,9 @@ PLACE	0								; o código tem de começar em 0000H
 MOV  	SP, SP_inicial					; inicialização de SP
 MOV  	BTE, tab						; inicializa BTE (registo de Base da Tabela de Exceções)
 EI0										; permite interrupções 0
-EI										; permite interrupções (geral)
+EI1										; permite interrupções 1
+EI2										; permite interrupções 2
+EI										; permite interrupções gerais
 
 
 MOV		R1, 0
@@ -294,7 +306,7 @@ display:
 	PUSH R5
 	PUSH R6		
 
-	MOV  R5, evento_int
+	MOV  R5, evento_int_energia
 	MOV  R2, [R5]					; valor da variável que diz se houve uma interrupção 
 	CMP  R2, 0
 	JZ   sai_display				; se não houve interrupção, sai
@@ -328,10 +340,33 @@ display:
 	POP  R1
 	RET
 	
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	int_inimigo:					; Assinala o evento na componente 0 da variável evento_int
 		PUSH R0
 		PUSH R1
-		MOV  R0, evento_int
+		MOV  R0, evento_int_inimigo
+		MOV  R1, 1					; assinala que houve uma interrupção 0
+		MOV  [R0], R1				; na componente 0 da variável evento_int
+		POP  R1
+		POP  R0
+		RFE
+
+
+	int_missil:					; Assinala o evento na componente 0 da variável evento_int
+		PUSH R0
+		PUSH R1
+		MOV  R0, evento_int_missil
+		MOV  R1, 1					; assinala que houve uma interrupção 0
+		MOV  [R0], R1				; na componente 0 da variável evento_int
+		POP  R1
+		POP  R0
+		RFE
+
+
+	int_energia:					; Assinala o evento na componente 0 da variável evento_int
+		PUSH R0
+		PUSH R1
+		MOV  R0, evento_int_energia
 		MOV  R1, 1					; assinala que houve uma interrupção 0
 		MOV  [R0], R1				; na componente 0 da variável evento_int
 		POP  R1
