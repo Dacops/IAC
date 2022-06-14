@@ -35,30 +35,76 @@ SOM				EQU 605AH      	; endereço do comando para selecionar efeitos sonoros
 
 LARGURA_NAVE			EQU	5		; largura da nave
 ALTURA_NAVE				EQU	4		; altura da nave
-POS_INICIAL_NAVE_X		EQU 30		; coluna inicial da nave
-POS_INICIAL_NAVE_Y		EQU 28		; linha inicial da nave
+LINHA_INICIAL_NAVE		EQU 28
+COLUNA_INICIAL_NAVE		EQU 30
 
 LARGURA_INIMIGO 		EQU 5    	; largura do inimigo
 ALTURA_INIMIGO  		EQU 5		; altura do inimigo
-POS_INICIAL_INIMIGO_X	EQU 40		; coluna inicial do inimigo
-POS_INICIAL_INIMIGO_Y	EQU 0		; linha inicial do inimigo
+LINHA_INICIAL_INIM		EQU 0
+COLUNA_INICIAL_INIM		EQU 40
 
 
-COR_PIXEL1  	EQU	0F999H		; cores da nave
-COR_PIXEL2  	EQU 0FEEEH
-COR_PIXEL3  	EQU 0FF00H
-COR_PIXEL4		EQU 0F09FH
-COR_PIXEL5  	EQU 0F2D3H		; cores do inimigo
-COR_PIXEL6  	EQU 0F000H
+LARGURA_OVNI1			EQU 1
+ALTURA_OVNI1			EQU 1
+LARGURA_OVNI2			EQU 2
+ALTURA_OVNI2			EQU 2
+
+LARGURA_INIMIGO_PEQ		EQU 4
+ALTURA_INIMIGO_PEQ		EQU 3
+
+LARGURA_INIMIGO_MEDIO	EQU 5
+ALTURA_INIMIGO_MEDIO	EQU 3
+
+LARGURA_INIMIGO_GRANDE	EQU 5
+ALTURA_INIMIGO_GRANDE	EQU 5
+
+LARGURA_ENERGIA_PEQ		EQU 3
+ALTURA_ENERGIA_PEQ		EQU 3
+
+LARGURA_ENERGIA_MEDIO	EQU 5
+ALTURA_ENERGIA_MEDIO	EQU 3
+
+LARGURA_ENERGIA_GRANDE	EQU 5
+ALTURA_ENERGIA_GRANDE	EQU 4
+
+LARGURA_ENERGIA_ENORME	EQU 5
+ALTURA_ENERGIA_ENORME	EQU 5
+
+LARGURA_EXPLOSAO		EQU 5
+ALTURA_EXPLOSAO			EQU 5
+
+LARGURA_TIRO			EQU 1
+ALTURA_TIRO				EQU 1
+
+
+COR_BRANCO 		EQU 0FEEEH
+COR_AZUL		EQU 0F09FH
+COR_VERDE  		EQU 0F2D3H
+COR_PRETO  		EQU 0F000H
+COR_CINZENTO	EQU 0FCCCH		
+COR_VERMELHO	EQU 0FF31H
+COR_AMARELO		EQU 0FFF6H
+COR_ROSA		EQU 0FF7FH
+COR_ROXO		EQU 0FB6FH
+COR_LARANJA		EQU 0FFA2H
 
 MIN_COLUNA		EQU 0			; número da coluna mais à esquerda que o objeto pode ocupar
 MAX_COLUNA		EQU 63			; número da coluna mais à direita que o objeto pode ocupar
+
 ATRASO			EQU	2000H		; atraso para limitar a velocidade de movimento da nave
-NAVE_COLUNA		EQU 2002H		; coluna atual da nave
-NAVE_LINHA		EQU 2004H		; linha atual da nave
-INIM_LINHA		EQU 2006H		; linha atual do inimigo
-INIM_COLUNA 	EQU 2008H		; coluna atual do inimigo
-DISPLAY			EQU 200AH		; valor atual no display
+DISPLAY_INICIAL EQU 0
+
+
+; ***********************************************************************
+; * Variáveis Globais						  							*
+; ***********************************************************************
+PLACE 			2000H
+
+NAVE_COLUNA:  	WORD COLUNA_INICIAL_NAVE		; coluna atual da nave
+NAVE_LINHA:		WORD LINHA_INICIAL_NAVE 		; linha atual da nave
+INIM_COLUNA:	WORD COLUNA_INICIAL_INIM 		; linha atual do inimigo
+INIM_LINHA: 	WORD LINHA_INICIAL_INIM  		; coluna atual do inimigo
+DISPLAY:		WORD DISPLAY_INICIAL			; valor atual no display
 
 
 
@@ -78,9 +124,13 @@ tab:			; Tabela das rotinas de interrupção
 	WORD int_missil
 	WORD int_energia
 
-evento_int:
+evento_int_inimigo:
 	WORD 0				; se 1, indica que a interrupção 0 ocorreu
+
+evento_int_missil:
 	WORD 0
+
+evento_int_energia:
 	WORD 0
 
 
@@ -88,19 +138,92 @@ evento_int:
 DEF_NAVE:		; tabela que define o nave (cor,largura, pos inicial, pixels)
 	WORD		LARGURA_NAVE
 	WORD		ALTURA_NAVE
-	WORD		0, 0, COR_PIXEL1, 0, 0
-	WORD		0, COR_PIXEL2, COR_PIXEL4, COR_PIXEL2, 0
-    WORD        COR_PIXEL2, COR_PIXEL2, COR_PIXEL1, COR_PIXEL2, COR_PIXEL2
-    WORD        COR_PIXEL5, 0, 0, 0, COR_PIXEL3
+	WORD		0, 0, COR_CINZENTO, 0, 0
+	WORD		0, COR_BRANCO, COR_AZUL, COR_BRANCO, 0
+    WORD        COR_BRANCO, COR_BRANCO, COR_CINZENTO, COR_BRANCO, COR_BRANCO
+    WORD        COR_VERDE, 0, 0, 0, COR_VERMELHO
 
-DEF_INIMIGO:    ; tabela que define o inimigo (cor, largura,pos inicial,pixels)
-    WORD		LARGURA_INIMIGO
-    WORD		ALTURA_INIMIGO
-    WORD		COR_PIXEL5, 0, 0, 0, COR_PIXEL5
-    WORD        0, COR_PIXEL5, COR_PIXEL5, COR_PIXEL5, 0
-    WORD        COR_PIXEL5, COR_PIXEL6, COR_PIXEL5, COR_PIXEL6, COR_PIXEL5
-	WORD		COR_PIXEL5, COR_PIXEL5, COR_PIXEL5, COR_PIXEL5, COR_PIXEL5
-    WORD        0, COR_PIXEL5, 0, COR_PIXEL5, 0
+DEF_OVNI1:
+	WORD		LARGURA_OVNI1
+	WORD		ALTURA_OVNI1
+	WORD		COR_CINZENTO
+
+DEF_OVNI2:
+	WORD		LARGURA_OVNI2
+	WORD		ALTURA_OVNI2
+	WORD		COR_CINZENTO, COR_CINZENTO
+	WORD		COR_CINZENTO, COR_CINZENTO
+
+DEF_INIMIGO_PEQ:
+	WORD		LARGURA_INIMIGO_PEQ
+	WORD		ALTURA_INIMIGO_PEQ
+	WORD		0, COR_VERDE, COR_VERDE, 0
+	WORD		COR_VERDE, 0, 0, COR_VERDE
+	WORD		COR_VERDE, COR_VERDE, COR_VERDE, COR_VERDE
+
+DEF_INIMIGO_MEDIO:
+	WORD		LARGURA_INIMIGO_MEDIO
+	WORD		ALTURA_INIMIGO_MEDIO
+	WORD		0, COR_VERDE, COR_VERDE, 0
+	WORD		COR_VERDE, COR_PRETO, COR_VERDE, COR_PRETO, COR_VERDE
+	WORD		COR_VERDE, COR_VERDE, COR_VERDE, COR_VERDE, COR_VERDE
+
+DEF_INIMIGO_GRANDE:
+	WORD		LARGURA_INIMIGO_GRANDE
+	WORD		ALTURA_INIMIGO_GRANDE
+	WORD		COR_VERDE, 0, 0, 0, COR_VERDE
+	WORD 		0, COR_VERDE, COR_VERDE, COR_VERDE, 0
+	WORD		COR_VERDE, COR_PRETO, COR_VERDE, COR_PRETO, COR_VERDE
+	WORD		COR_VERDE, COR_VERDE, COR_VERDE, COR_VERDE, COR_VERDE
+	WORD		0, COR_VERDE, 0, COR_VERDE, 0
+
+DEF_ENERGIA_PEQ:
+	WORD 		LARGURA_ENERGIA_PEQ
+	WORD		ALTURA_ENERGIA_PEQ
+	WORD		COR_VERMELHO, 0, COR_VERMELHO
+	WORD		COR_VERMELHO, COR_VERMELHO, COR_VERMELHO
+	WORD		0, COR_VERMELHO, 0
+
+DEF_ENERGIA_MEDIO:
+	WORD		LARGURA_ENERGIA_MEDIO
+	WORD		ALTURA_ENERGIA_MEDIO
+	WORD		COR_VERMELHO, COR_VERMELHO, 0, COR_VERMELHO, COR_VERMELHO
+	WORD		0, COR_VERMELHO, COR_VERMELHO, COR_VERMELHO, 0
+	WORD		0, 0, COR_VERMELHO, 0, 0
+
+DEF_ENERGIA_GRANDE:
+	WORD		LARGURA_ENERGIA_GRANDE
+	WORD		ALTURA_ENERGIA_GRANDE
+	WORD		COR_VERMELHO, COR_VERMELHO, 0, COR_VERMELHO, COR_VERMELHO
+	WORD		COR_VERMELHO, COR_VERMELHO, COR_VERMELHO, COR_VERMELHO, COR_VERMELHO
+	WORD		0, COR_VERMELHO, COR_VERMELHO, COR_VERMELHO, 0
+	WORD		0, 0, COR_VERMELHO, 0, 0
+
+DEF_ENERGIA_ENORME:
+	WORD		LARGURA_ENERGIA_ENORME
+	WORD		ALTURA_ENERGIA_ENORME
+	WORD		COR_VERMELHO, COR_VERMELHO, 0, COR_VERMELHO, COR_VERMELHO
+	WORD		COR_VERMELHO, COR_VERMELHO, COR_VERMELHO, COR_VERMELHO, COR_VERMELHO
+	WORD		COR_VERMELHO, COR_VERMELHO, COR_VERMELHO, COR_VERMELHO, COR_VERMELHO
+	WORD		0, COR_VERMELHO, COR_VERMELHO, COR_VERMELHO, 0
+	WORD		0, 0, COR_VERMELHO, 0, 0
+
+DEF_EXPLOSAO:
+	WORD		LARGURA_EXPLOSAO
+	WORD		ALTURA_EXPLOSAO
+	WORD		0, COR_AZUL, 0, COR_VERDE, 0
+	WORD		COR_ROXO, 0, COR_ROSA, 0, COR_LARANJA
+	WORD		0, COR_VERDE, 0, COR_ROSA, 0
+	WORD		COR_LARANJA, 0, COR_AZUL, 0, COR_ROXO
+	WORD		0, COR_ROSA, 0, COR_VERDE, 0
+
+DEF_TIRO:
+	WORD		LARGURA_TIRO
+	WORD		ALTURA_TIRO
+	WORD		COR_AMARELO
+
+
+
 	
 VAL_DISPLAY:	; tabela que guarda múltiplos de 5 para usar no display
 	WORD		0H, 5H, 10H, 15H, 20H, 25H, 30H, 35H, 40H, 45H, 50H
@@ -111,7 +234,7 @@ TECLAS:			; tabela que define a relação tecla:função
 	WORD		return, move_esquerda, move_direita, return
 	WORD		inimigo, return, return, return
 	WORD		return, return, return, return
-	WORD		return, pause, game_over, return
+	WORD		return, pause, return, game_over
 
 
 
@@ -127,12 +250,12 @@ EI1										; permite interrupções 1
 EI2										; permite interrupções 2
 EI										; permite interrupções gerais
 
-
-MOV		R1, 0
-MOV  	[APAGA_AVISO], R1				; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
-MOV  	[APAGA_ECRA], R1				; apaga todos os pixels já desenhados (o valor de R1 não é relevante)
-MOV		[IMAGEM], R1					; imagem de início de jogo
-JMP		inicio_jogo
+prepara_ecra:
+	MOV		R1, 0
+	MOV  	[APAGA_AVISO], R1				; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
+	MOV  	[APAGA_ECRA], R1				; apaga todos os pixels já desenhados (o valor de R1 não é relevante)
+	MOV		[IMAGEM], R1					; imagem de início de jogo
+	JMP		inicio_jogo
 
 
 ; pausa o jogo
@@ -146,9 +269,8 @@ pause:
 	CALL	premida
 	
 pause_loop:
-	MOV		R2, 0						; valor default do teclado
 	CALL	teclado
-	MOV		R2, 0DH
+	MOV		R2, 0CH
 	CMP 	R0, R2
 	JNZ		pause_loop
 	CALL	premida
@@ -169,13 +291,14 @@ pause_loop:
 
 	MOV 	R1, [INIM_LINHA]			; linha atual do inimigo
 	MOV 	R2, [INIM_COLUNA]			; coluna atual do inimigo
-	MOV 	R3, DEF_INIMIGO				; endereço da tabela que define o inimigo
+	MOV 	R3, DEF_INIMIGO_GRANDE		; endereço da tabela que define o inimigo
 	CALL 	desenha_objecto				; faz um desenho inicial do inimigo
 	
 	JMP		ciclo
 
 
-; espera pelo início do jogo, tecla B
+
+; espera pelo início do jogo, tecla C
 inicio_jogo:							
 	CALL	teclado
 	MOV		R2, 0CH
@@ -193,20 +316,20 @@ MOV  	[VIDEO], R1						; cenário de fundo em loop
 
 ; desenha a nave no ecrã no inicio do jogo
 desenha_nave_inicial:					; desenha a nave a partir da tabela
-	MOV 	R1, POS_INICIAL_NAVE_Y
+	MOV 	R1, [NAVE_LINHA]
 	MOV 	[NAVE_LINHA], R1			; inicializa a linha da nave
-	MOV 	R2, POS_INICIAL_NAVE_X
+	MOV 	R2, [NAVE_COLUNA]
 	MOV 	[NAVE_COLUNA], R2			; inicializa a coluna da nave
 	MOV 	R3, DEF_NAVE				; endereço da tabela que define a nave
 	CALL 	desenha_objecto				; faz um desenho inicial da nave
 
 ; desenha o inimigo no ecrã no inicio do jogo
 desenha_inimigo_inicial:				; desenha o inimigo a partir da tablea
-	MOV 	R1, POS_INICIAL_INIMIGO_Y
+	MOV 	R1, [INIM_LINHA]
 	MOV 	[INIM_LINHA], R1			; inicializa a linha do inimigo
-	MOV 	R2, POS_INICIAL_INIMIGO_X
+	MOV 	R2, [INIM_COLUNA]
 	MOV 	[INIM_COLUNA], R2			; inicializa a coluna do inimigo
-	MOV 	R3, DEF_INIMIGO				; endereço da tabela que define o inimigo
+	MOV 	R3, DEF_INIMIGO_GRANDE		; endereço da tabela que define o inimigo
 	CALL 	desenha_objecto				; faz um desenho inicial do inimigo
 
 
@@ -222,6 +345,38 @@ ciclo:
 	
 	CALL	R2
 	JMP		ciclo
+	
+
+
+; jogo terminado -----------------------------------------------------------------------------
+game_over:
+	MOV		R1, 1
+	MOV  	[APAGA_AVISO], R1				; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
+	MOV  	[APAGA_ECRA], R1				; apaga todos os pixels já desenhados (o valor de R1 não é relevante)
+	MOV		[IMAGEM], R1					; imagem de início de jogo
+	MOV		R1, 0
+	MOV		[PARA_VIDEO], R1				; remove o vídeo de fundo
+	CALL 	reinicia_valores
+	
+end_loop:
+	CALL 	teclado
+	MOV		R2, 0CH
+	CMP		R0, R2
+	JZ		prepara_ecra
+	JMP		end_loop
+
+reinicia_valores:
+	PUSH	R1
+	MOV		R1, LINHA_INICIAL_NAVE
+	MOV		[NAVE_LINHA], R1
+	MOV		R1, COLUNA_INICIAL_NAVE
+	MOV		[NAVE_COLUNA], R1
+	MOV 	R1, DISPLAY_INICIAL
+	MOV		[DISPLAY], R1
+	POP 	R1
+	RET
+
+;-------------------------------------------------------------------------------------
 
 
 ; ***********************************************************************
@@ -302,8 +457,7 @@ display:
 	PUSH R5
 	PUSH R6		
 
-	MOV  R5, evento_int
-	ADD	 R5, 4
+	MOV  R5, evento_int_energia
 	MOV  R2, [R5]					; valor da variável que diz se houve uma interrupção 
 	CMP  R2, 0
 	JZ   sai_display				; se não houve interrupção, sai
@@ -337,11 +491,13 @@ display:
 	POP  R1
 	RET
 	
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	int_inimigo:					; Assinala o evento na componente 0 da variável evento_int
 		PUSH R0
 		PUSH R1
-		MOV  R0, evento_int
+		MOV  R0, evento_int_inimigo
 		MOV  R1, 1					; assinala que houve uma interrupção 0
 		MOV  [R0], R1				; na componente 0 da variável evento_int
 		POP  R1
@@ -352,8 +508,7 @@ display:
 	int_missil:					; Assinala o evento na componente 0 da variável evento_int
 		PUSH R0
 		PUSH R1
-		MOV  R0, evento_int
-		ADD	 R0, 2
+		MOV  R0, evento_int_missil
 		MOV  R1, 1					; assinala que houve uma interrupção 0
 		MOV  [R0], R1				; na componente 0 da variável evento_int
 		POP  R1
@@ -364,8 +519,7 @@ display:
 	int_energia:					; Assinala o evento na componente 0 da variável evento_int
 		PUSH R0
 		PUSH R1
-		MOV  R0, evento_int
-		ADD  R0, 4
+		MOV  R0, evento_int_energia
 		MOV  R1, 1					; assinala que houve uma interrupção 0
 		MOV  [R0], R1				; na componente 0 da variável evento_int
 		POP  R1
@@ -378,18 +532,9 @@ display:
 ; rotina return, volta ao corpo principal do programa
 return:
 	RET
-	
-; jogo terminado
-game_over:
-	MOV		R1, 1
-	MOV  	[APAGA_AVISO], R1				; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
-	MOV  	[APAGA_ECRA], R1				; apaga todos os pixels já desenhados (o valor de R1 não é relevante)
-	MOV		[IMAGEM], R1					; imagem de início de jogo
-	MOV		R1, 0
-	MOV		[PARA_VIDEO], R1				; remove o vídeo de fundo
-	
-end_loop:
-	JMP		end_loop	
+
+
+
 
 	
 ; ***********************************************************************
@@ -452,7 +597,7 @@ inimigo:
 	CMP R1, R4					; verificar se já antigiu o limite do ecrã
 	JZ 	return
 	MOV R2, [INIM_COLUNA]		; lê a coluna atual do inimigo
-	MOV R3, DEF_INIMIGO			; endereço da tabela que define o inimigo	
+	MOV R3, DEF_INIMIGO_GRANDE	; endereço da tabela que define o inimigo	
 
 
 apaga_inimigo:       			; apaga o inimigo da posição onde estiver
