@@ -236,6 +236,8 @@ TECLAS:			; tabela que define a relação tecla:função
 NOVAS_COLUNAS:	; tabela que transforma valores de 0 a 8 nas colunas existentes
 	WORD		1, 9, 17, 25, 33, 41, 49, 57 
 
+FASES_INIMIGO:	; relaciona linha com design atual do inimigo
+	WORD		DEF_OVNI1, DEF_OVNI2, DEF_INIMIGO_PEQ, DEF_INIMIGO_MEDIO, DEF_INIMIGO_GRANDE
 
 
 ; ***********************************************************************
@@ -711,7 +713,7 @@ move_objetos:
 			MOV		[R1+4], R2						; guarda novas informações
 			MOV		R5, 0
 			MOV		[R1+6], R5
-			MOV		R5, DEF_INIMIGO_GRANDE
+			MOV		R5, DEF_OVNI1
 			MOV 	[R1+8], R5
 			CALL 	desenha_inimigo
 		
@@ -736,10 +738,26 @@ move_objetos:
 		PUSH	R3
 		PUSH	R5
 		PUSH	R6
+		PUSH	R7
+		PUSH	R8
 		
 		MOV		R5, R1
 		MOV		R1, [R5+6]
 		MOV		R2, [R5+4]
+		MOV		R3, [R5+8]
+		
+		MOV		R7, R1
+		MOV		R8, 3		; de quantas em quantas linhas muda de fase
+		DIV		R7, R8
+		CMP		R7, 4		; tabela de versões vai tem 5 elementos
+		JLT		atualiza
+		MOV		R7,	4		; evita sair da tabela de versões
+		atualiza:
+		SHL		R7, 1
+		MOV		R8, FASES_INIMIGO
+		ADD		R7, R8
+		MOV		R3, [R7]
+		MOV		[R5+8], R3
 		MOV		R3, [R5+8]
 		
 		MOV		R6, 01FH
@@ -755,6 +773,8 @@ move_objetos:
 		CALL	desenha_inimigo
 		
 	fim_move_objeto:
+		POP		R8
+		POP		R7
 		POP		R6
 		POP		R5
 		POP		R3
