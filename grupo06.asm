@@ -215,12 +215,33 @@ DEF_MISSIL:
 	WORD		ALTURA_MISSIL
 	WORD		COR_AMARELO
 
-DEF_INIMIGO:
-	WORD		0				; estado do inimido
-	WORD		27				; seed do inimigo
-	WORD		0				; linha do inimigo
-	WORD		0				; coluna do inimigo
-	WORD		0				; desenho do inimigo
+DEF_INIMIGO1:
+	WORD		0				; estado do inimido1
+	WORD		27				; seed do inimigo1
+	WORD		0				; coluna do inimigo1
+	WORD		0				; linha do inimigo1
+	WORD		0				; desenho do inimigo1
+	
+DEF_INIMIGO2:
+	WORD		0				; estado do inimido2
+	WORD		31				; seed do inimigo2
+	WORD		0				; coluna do inimigo2
+	WORD		0				; linha do inimigo2
+	WORD		0				; desenho do inimigo2
+	
+DEF_INIMIGO3:
+	WORD		0				; estado do inimido3
+	WORD		41				; seed do inimigo3
+	WORD		0				; coluna do inimigo3
+	WORD		0				; linha do inimigo3
+	WORD		0				; desenho do inimigo3
+	
+DEF_ENERGIA:
+	WORD		0				; estado da energia
+	WORD		55				; seed da energia
+	WORD		0				; coluna da energia
+	WORD		0				; linha da energia
+	WORD		0				; desenho da energia
 	
 VAL_DISPLAY:	; tabela que guarda múltiplos de 5 para usar no display
 	WORD		0H, 5H, 10H, 15H, 20H, 25H, 30H, 35H, 40H, 45H, 50H
@@ -238,6 +259,9 @@ NOVAS_COLUNAS:	; tabela que transforma valores de 0 a 8 nas colunas existentes
 
 FASES_INIMIGO:	; relaciona linha com design atual do inimigo
 	WORD		DEF_OVNI1, DEF_OVNI2, DEF_INIMIGO_PEQ, DEF_INIMIGO_MEDIO, DEF_INIMIGO_GRANDE
+	
+FASES_ENERGIA:	; relaciona linha com design atual da energia
+	WORD		DEF_OVNI1, DEF_OVNI2, DEF_ENERGIA_PEQ, DEF_ENERGIA_MEDIO, DEF_ENERGIA_GRANDE, DEF_ENERGIA_ENORME	
 
 
 ; ***********************************************************************
@@ -657,12 +681,15 @@ move_objetos:
 	MOV  	R5, evento_int_inimigo
 	MOV 	R2, [R5]					; valor da variável que diz se houve uma interrupção 
 	CMP  	R2, 0
-	JZ		sai_move_objetos			; se não houve interrupção, sai
+	JZ		sai_move_objetos_final		; se não houve interrupção, sai
 	MOV  	R2, 0
 	MOV  	[R5], R2					; coloca a zero o valor da variável que diz 
 										; se houve uma interrupção (consome evento)
-										
-	MOV		R1, DEF_INIMIGO
+	
+	MOV		R1, DEF_INIMIGO1			; tabela do 1o inimigo
+	MOV		R9, 4						; inimigos a desenhar
+	
+	loop_inimigos:
 	MOV		R2, [R1]
 	CMP		R2, 0				; verifica se o objeto em questão já foi gerado
 	JNZ		move_objeto
@@ -672,6 +699,13 @@ move_objetos:
 	CALL	collatz				; cria coluna aleatória
 	
 	sai_move_objetos:
+		MOV		R10, 0AH
+		ADD		R1, R10
+		SUB		R9, 1
+		CMP		R9, 0
+		JNZ		loop_inimigos
+		
+	sai_move_objetos_final:
 		POP		R5
 		POP		R2
 		POP		R1
@@ -746,20 +780,40 @@ move_objetos:
 		MOV		R2, [R5+4]
 		MOV		R3, [R5+8]
 		
+		CMP		R9, 1		; vida em vez de inimigos
+		JZ		design_energia
 		MOV		R7, R1
 		MOV		R8, 3		; de quantas em quantas linhas muda de fase
 		DIV		R7, R8
-		CMP		R7, 4		; tabela de versões vai tem 5 elementos
-		JLT		atualiza
+		CMP		R7, 4		; tabela de versões tem 5 elementos
+		JLT		atualiza_inimigo
 		MOV		R7,	4		; evita sair da tabela de versões
-		atualiza:
+	
+	atualiza_inimigo:
 		SHL		R7, 1
 		MOV		R8, FASES_INIMIGO
 		ADD		R7, R8
 		MOV		R3, [R7]
 		MOV		[R5+8], R3
-		MOV		R3, [R5+8]
+		JMP		fim_atualização
 		
+	design_energia:
+		MOV		R7, R1
+		MOV		R8, 3		; de quantas em quantas linhas muda de fase
+		DIV		R7, R8
+		CMP		R7, 5		; tabela de versões tem 6 elementos
+		JLT		atualiza_energia
+		MOV		R7,	5		; evita sair da tabela de versões
+	
+	atualiza_energia:
+		SHL		R7, 1
+		MOV		R8, FASES_ENERGIA
+		ADD		R7, R8
+		MOV		R3, [R7]
+		MOV		[R5+8], R3
+		JMP		fim_atualização
+		
+	fim_atualização:
 		MOV		R6, 01FH
 		CMP		R1, R6
 		JZ		nova_geração
@@ -848,6 +902,12 @@ desenha_objecto:       			; desenha os pixels do objetoe a partir da tabela
 	PUSH 	R1
 	PUSH	R2
 	PUSH	R3
+	PUSH	R4
+	PUSH	R5
+	PUSH	R6
+	PUSH	R8
+	PUSH	R9
+	
 	MOV		R4, [R3]			; lê a largura do objeto
 	ADD 	R3, 2
 	MOV     R5, [R3]			; lê a altura do objeto
@@ -867,6 +927,12 @@ desenha_pixels:
 	ADD  	R1, 1              	; proxima linha
 	SUB  	R5, 1               ; menos uma linha para tratar
 	JNZ  	desenha_pixels		; continua até percurrer a altura total do objeto
+	
+	POP		R9
+	POP		R8
+	POP		R6
+	POP		R5
+	POP		R4
 	POP 	R3
 	POP 	R2
 	POP 	R1
