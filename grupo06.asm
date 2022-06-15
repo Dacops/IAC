@@ -108,7 +108,6 @@ INIM_LINHA: 	WORD LINHA_INICIAL_INIM  		; coluna atual do inimigo
 DISPLAY:		WORD DISPLAY_INICIAL			; valor atual no display
 EXISTE_MISSIL:  WORD 0							; 1 se já existir um missil no ecrã
 
-
 ; ***********************************************************************
 ; * Dados																*
 ; ***********************************************************************
@@ -223,8 +222,12 @@ DEF_MISSIL:
 	WORD		ALTURA_MISSIL
 	WORD		COR_AMARELO
 
-
-
+DEF_INIMIGO:
+	WORD		0				; estado do inimido
+	WORD		27				; seed do inimigo
+	WORD		0				; linha do inimigo
+	WORD		0				; coluna do inimigo
+	WORD		0				; desenho do inimigo
 	
 VAL_DISPLAY:	; tabela que guarda múltiplos de 5 para usar no display
 	WORD		0H, 5H, 10H, 15H, 20H, 25H, 30H, 35H, 40H, 45H, 50H
@@ -236,6 +239,9 @@ TECLAS:			; tabela que define a relação tecla:função
 	WORD		inimigo, return, return, return
 	WORD		return, return, return, return
 	WORD		return, pause, return, game_over_pedido
+	
+NOVAS_COLUNAS:	; tabela que transforma valores de 0 a 8 nas colunas existentes
+	WORD		1, 9, 17, 25, 33, 41, 49, 57 
 
 
 
@@ -289,11 +295,6 @@ pause_loop:
 	MOV 	R2, [NAVE_COLUNA]			; coluna atual da nave
 	MOV 	R3, DEF_NAVE				; endereço da tabela que define a nave
 	CALL 	desenha_objecto				; desenha a nave
-
-	MOV 	R1, [INIM_LINHA]			; linha atual do inimigo
-	MOV 	R2, [INIM_COLUNA]			; coluna atual do inimigo
-	MOV 	R3, DEF_INIMIGO_GRANDE		; endereço da tabela que define o inimigo
-	CALL 	desenha_objecto				; faz um desenho inicial do inimigo
 	
 	JMP		ciclo
 
@@ -323,22 +324,13 @@ desenha_nave_inicial:					; desenha a nave a partir da tabela
 	MOV 	R3, DEF_NAVE				; endereço da tabela que define a nave
 	CALL 	desenha_objecto				; faz um desenho inicial da nave
 
-; desenha o inimigo no ecrã no inicio do jogo
-desenha_inimigo_inicial:				; desenha o inimigo a partir da tablea
-	MOV 	R1, [INIM_LINHA]
-	MOV 	[INIM_LINHA], R1			; inicializa a linha do inimigo
-	MOV 	R2, [INIM_COLUNA]
-	MOV 	[INIM_COLUNA], R2			; inicializa a coluna do inimigo
-	MOV 	R3, DEF_INIMIGO_GRANDE		; endereço da tabela que define o inimigo
-	CALL 	desenha_objecto				; faz um desenho inicial do inimigo
-
-
 ; corpo principal do programa
 ciclo:
 	MOV		R0, 0			; coloca sempre a tecla premida com um valor default
 	CALL 	teclado
 	CALL	display
 	CALL	move_missil
+	CALL	move_objetos
 	SHL		R0, 1
 	MOV		R1, TECLAS
 	ADD		R1, R0
@@ -661,12 +653,142 @@ RET
 ; *						2006H - linha atual do inimigo					*
 ; * Saídas:				2006H - nova linha atual do inimigo				*
 ; ***********************************************************************		
+
+move_objetos:
+	PUSH	R1
+	PUSH	R2
+	PUSH	R5
+	
+	MOV  	R5, evento_int_inimigo
+	MOV 	R2, [R5]					; valor da variável que diz se houve uma interrupção 
+	CMP  	R2, 0
+	JZ		sai_move_objetos			; se não houve interrupção, sai
+	MOV  	R2, 0
+	MOV  	[R5], R2					; coloca a zero o valor da variável que diz 
+										; se houve uma interrupção (consome evento)
+										
+	MOV		R1, DEF_INIMIGO
+	MOV		R2, [R1]
+	CMP		R2, 0				; verifica se o objeto em questão já foi gerado
+	JNZ		move_objeto
+	
+	MOV		R2, 1
+	MOV		[R1], R2
+	CALL	collatz				; cria coluna aleatória
+	
+	sai_move_objetos:
+		POP		R5
+		POP		R2
+		POP		R1
+		RET
+	
+	
+	collatz:
+		PUSH	R1
+		PUSH	R2
+		PUSH	R3
+		PUSH	R4
+		PUSH	R5
+		
+		MOV		R2, [R1+2]		; recebe seed do objeto
+		MOV		R3, R2			; cria cópia da seed
+		MOV		R4, 2			
+		MOD		R3, R4
+		MOV		R4, 0
+		CMP		R3, R4
+		JZ		par
+		MOV		R4, 3
+		MUL		R2, R4
+		ADD		R2, 1
+		JMP		collatz_end
+		
+		par:
+			MOV		R4, 2
+			DIV		R2, R4
+		
+		collatz_end:
+			MOV		[R1+2], R2						; guarda nova seed
+			MOV		R4, 8							; transforma valor random numa coluna
+			MOD		R2, R4
+			MOV		R4, NOVAS_COLUNAS
+			SHL		R2, 1
+			MOV		R5, R2
+			ADD		R5, R4
+			MOV		R2, [R5]
+			MOV		[R1+4], R2						; guarda novas informações
+			MOV		R5, 0
+			MOV		[R1+6], R5
+			MOV		R5, DEF_INIMIGO_GRANDE
+			MOV 	[R1+8], R5
+			CALL 	desenha_inimigo
+		
+			POP		R5
+			POP		R4
+			POP		R3
+			POP		R2
+			POP		R1
+			RET
+
+	desenha_inimigo:
+			MOV		R4, R1
+			MOV		R2, [R4+4]
+			MOV		R1, [R4+6]
+			MOV		R3, [R4+8]
+			CALL 	desenha_objecto
+			RET
+			
+	move_objeto:
+		PUSH	R1
+		PUSH	R2
+		PUSH	R3
+		PUSH	R5
+		PUSH	R6
+		
+		MOV		R5, R1
+		MOV		R1, [R5+6]
+		MOV		R2, [R5+4]
+		MOV		R3, [R5+8]
+		
+		MOV		R6, 01FH
+		CMP		R1, R6
+		JZ		nova_geração
+		
+		CALL	apaga_objeto
+		MOV		R1, R5
+		MOV		R2, [R1+6]
+		ADD		R2, 1
+		MOV		[R1+6], R2
+		
+		CALL	desenha_inimigo
+		
+	fim_move_objeto:
+		POP		R6
+		POP		R5
+		POP		R3
+		POP		R2
+		POP		R1
+		JMP		sai_move_objetos
+
+	nova_geração:
+		CALL	apaga_objeto
+		MOV		R1, 0
+		MOV 	[R5], R1
+		MOV		[R5+4], R1
+		MOV		[R5+6], R1
+		MOV		[R5+8], R1
+		JMP		fim_move_objeto
+	
+
+; TEMPORÁRIA ------------
+return2:
+	RET
+
 inimigo:
 	CALL premida				; verifica quando a tecla deixa de ser premida
 	MOV R1, [INIM_LINHA]		; lê a linha atual do inimigo
 	MOV R4, 23
 	CMP R1, R4					; verificar se já antigiu o limite do ecrã
-	JZ 	return
+	JZ 	return2
 	MOV R2, [INIM_COLUNA]		; lê a coluna atual do inimigo
 	MOV R3, DEF_INIMIGO_GRANDE	; endereço da tabela que define o inimigo	
 
@@ -700,6 +822,11 @@ apaga_objeto:       			; desenha os pixels da nave a partir da tabela
 	PUSH 	R1
 	PUSH	R2
 	PUSH 	R3
+	PUSH	R5
+	PUSH	R6
+	PUSH	R8
+	PUSH	R9
+	
 	MOV 	R4, [R3]			; lê a largura do objeto da tabela que o define
 	ADD 	R3, 2
 	MOV 	R5, [R3]			; lê a altura do objeto
@@ -717,6 +844,11 @@ apaga_pixels:
 	ADD  	R1, 1              	; proxima linha
 	SUB  	R5, 1               ; menos uma linha para apagar
 	JNZ  	apaga_pixels		; continua até percorrer toda a altura do objeto
+	
+	POP		R9
+	POP		R8
+	POP		R6
+	POP		R5
 	POP 	R3
 	POP 	R2
 	POP 	R1
