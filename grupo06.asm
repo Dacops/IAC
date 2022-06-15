@@ -87,7 +87,7 @@ MAX_COLUNA			EQU 63			; número da coluna mais à direita que o objeto pode ocup
 
 ATRASO				EQU	3000H		; atraso para limitar a velocidade de movimento da nave
 DISPLAY_INICIAL 	EQU 0
-LINHA_LIMITE_MISSIL EQU 0
+LINHA_LIMITE_MISSIL EQU 15
 
 ; ***********************************************************************
 ; * Variáveis Globais						  							*
@@ -157,7 +157,7 @@ DEF_INIMIGO_PEQ:
 DEF_INIMIGO_MEDIO:
 	WORD		LARGURA_INIMIGO_MEDIO
 	WORD		ALTURA_INIMIGO_MEDIO
-	WORD		0, COR_VERDE, COR_VERDE, 0
+	WORD		0, COR_VERDE, COR_VERDE, COR_VERDE, 0
 	WORD		COR_VERDE, COR_PRETO, COR_VERDE, COR_PRETO, COR_VERDE
 	WORD		COR_VERDE, COR_VERDE, COR_VERDE, COR_VERDE, COR_VERDE
 
@@ -209,6 +209,9 @@ DEF_EXPLOSAO:
 	WORD		0, COR_VERDE, 0, COR_ROSA, 0
 	WORD		COR_LARANJA, 0, COR_AZUL, 0, COR_ROXO
 	WORD		0, COR_ROSA, 0, COR_VERDE, 0
+	
+DELAY_EXPLOSAO:					; ciclos que precisam de decorrer até a explosão ser apagada
+	WORD		3
 
 DEF_MISSIL:
 	WORD		LARGURA_MISSIL
@@ -221,6 +224,7 @@ DEF_INIMIGO1:
 	WORD		0				; coluna do inimigo1
 	WORD		0				; linha do inimigo1
 	WORD		0				; desenho do inimigo1
+	WORD		0				; inimigo1 colidiu?
 	
 DEF_INIMIGO2:
 	WORD		0				; estado do inimido2
@@ -228,6 +232,7 @@ DEF_INIMIGO2:
 	WORD		0				; coluna do inimigo2
 	WORD		0				; linha do inimigo2
 	WORD		0				; desenho do inimigo2
+	WORD		0				; inimigo2 colidiu?
 	
 DEF_INIMIGO3:
 	WORD		0				; estado do inimido3
@@ -235,13 +240,15 @@ DEF_INIMIGO3:
 	WORD		0				; coluna do inimigo3
 	WORD		0				; linha do inimigo3
 	WORD		0				; desenho do inimigo3
+	WORD		0				; inimigo3 colidiu?
 	
 DEF_ENERGIA:
 	WORD		0				; estado da energia
-	WORD		55				; seed da energia
+	WORD		82				; seed da energia
 	WORD		0				; coluna da energia
 	WORD		0				; linha da energia
 	WORD		0				; desenho da energia
+	WORD		0				; energia colidiu?
 	
 VAL_DISPLAY:	; tabela que guarda múltiplos de 5 para usar no display
 	WORD		0H, 5H, 10H, 15H, 20H, 25H, 30H, 35H, 40H, 45H, 50H
@@ -685,21 +692,24 @@ move_objetos:
 	MOV  	R2, 0
 	MOV  	[R5], R2					; coloca a zero o valor da variável que diz 
 										; se houve uma interrupção (consome evento)
-	
+
 	MOV		R1, DEF_INIMIGO1			; tabela do 1o inimigo
 	MOV		R9, 4						; inimigos a desenhar
 	
 	loop_inimigos:
-	MOV		R2, [R1]
-	CMP		R2, 0				; verifica se o objeto em questão já foi gerado
-	JNZ		move_objeto
-	
-	MOV		R2, 1
-	MOV		[R1], R2
-	CALL	collatz				; cria coluna aleatória
+		MOV		R2, [R1+10]
+		CMP		R2, 0
+		JNZ		apaga_explosao
+        MOV		R2, [R1]
+        CMP		R2, 0				; verifica se o objeto em questão já foi gerado
+        JNZ		move_objeto
+        
+        MOV		R2, 1
+        MOV		[R1], R2
+        CALL	collatz				; cria coluna aleatória
 	
 	sai_move_objetos:
-		MOV		R10, 0AH
+		MOV		R10, 0CH
 		ADD		R1, R10
 		SUB		R9, 1
 		CMP		R9, 0
@@ -710,6 +720,28 @@ move_objetos:
 		POP		R2
 		POP		R1
 		RET
+	
+	apaga_explosao:
+		MOV		R4, [DELAY_EXPLOSAO]
+		SUB		R4, 1
+		MOV		[DELAY_EXPLOSAO], R4
+		CMP		R4, 0
+		JNZ		sai_move_objetos
+		MOV		R4, 3					; delay default
+		MOV		[DELAY_EXPLOSAO], R4
+		MOV		R5, R1
+		MOV		R1, [R5+6]
+		MOV		R2, [R5+4]
+		MOV		R3, [R5+8]
+		CALL	apaga_objeto
+		MOV		R1, 0
+		MOV 	[R5], R1
+		MOV		[R5+4], R1
+		MOV		[R5+6], R1
+		MOV		[R5+8], R1
+		MOV		[R5+10], R1
+		MOV		R1, R5
+		JMP		sai_move_objetos
 	
 	
 	collatz:
@@ -749,7 +781,7 @@ move_objetos:
 			MOV		[R1+6], R5
 			MOV		R5, DEF_OVNI1
 			MOV 	[R1+8], R5
-			CALL 	desenha_inimigo
+			CALL 	desenha_boneco
 		
 			POP		R5
 			POP		R4
@@ -758,64 +790,13 @@ move_objetos:
 			POP		R1
 			RET
 
-	desenha_inimigo:
+	desenha_boneco:
 			MOV		R4, R1
 			MOV		R2, [R4+4]
 			MOV		R1, [R4+6]
 			MOV		R3, [R4+8]
 			CALL 	desenha_objecto
 			RET
-
-		trata_colisoes:
-		PUSH	R1
-		PUSH	R2
-		PUSH	R3
-		PUSH	R4
-		PUSH	R5
-		PUSH	R6
-		PUSH	R7
-		PUSH	R8
-		
-		MOV		R7, 0
-		MOV 	R8, [MISSIL_LINHA]
-		MOV		R4, [MISSIL_COLUNA]
-		MOV		R2, R1
-		MOV		R3, [R2+4]					; acede a coluna do objecto e guarda-a no registo
-		MOV		R5, [R2+6]					; acede a linha do objecto e guarda-a no registo
-		MOV 	R6, [EXISTE_MISSIL]
-		CMP		R6, 0
-		JZ		pops_nao_colidiu
-		ADD		R5, 5						; soma  5 a linha atual do objecto gracas a sua altura
-		CMP		R5, R8						
-		JLT		pops_nao_colidiu
-		CMP		R4, R3
-		JLT		pops_nao_colidiu
-		ADD		R3, 5						; soma ao registo da coluna atual do objecto mais 5 gracas s sua largura
-		CMP		R4, R3
-		JLE		pops_colidiu
-		JMP		pops_nao_colidiu
-	
-	pops_colidiu:
-		POP		R8
-		POP		R7
-		POP		R6
-		POP		R5
-		POP		R4
-		POP		R3
-		POP		R2
-		POP		R1
-
-	colidiu:
-		MOV		R5, 0
-		MOV		[R1+4], R5
-		MOV		[R1+6], R5
-		MOV 	R3, DEF_MISSIL
-		MOV		R1, [MISSIL_LINHA]
-		MOV		R2, [MISSIL_COLUNA]
-		CALL	apaga_objeto
-		MOV		R4, EXISTE_MISSIL
-		MOV		[R4], R5
-		JMP		fim_move_objeto
 
 	move_objeto:
 		PUSH	R1
@@ -847,7 +828,72 @@ move_objetos:
 		MOV		R3, [R7]
 		MOV		[R5+8], R3
 		JMP		fim_atualização
+
+	trata_colisoes:
+		PUSH	R1
+		PUSH	R2
+		PUSH	R3
+		PUSH	R4
+		PUSH	R5
+		PUSH	R6
+		PUSH	R7
+		PUSH	R8
 		
+		MOV		R7, 0
+		MOV 	R8, [MISSIL_LINHA]
+		MOV		R4, [MISSIL_COLUNA]
+		MOV		R2, R1
+		MOV		R3, [R2+4]					; acede a coluna do objecto e guarda-a no registo
+		MOV		R5, [R2+6]					; acede a linha do objecto e guarda-a no registo
+		MOV		R10, R2
+		MOV 	R6, [EXISTE_MISSIL]
+		CMP		R6, 0
+		JZ		pops_nao_colidiu
+		ADD		R5, 5						; soma  5 a linha atual do objecto gracas a sua altura
+		CMP		R5, R8						
+		JLT		pops_nao_colidiu
+		CMP		R4, R3
+		JLT		pops_nao_colidiu
+		ADD		R3, 5						; soma ao registo da coluna atual do objecto mais 5 gracas s sua largura
+		CMP		R4, R3
+		JLE		pops_colidiu
+		JMP		pops_nao_colidiu
+	
+	pops_colidiu:
+		POP		R8
+		POP		R7
+		POP		R6
+		POP		R5
+		POP		R4
+		POP		R3
+		POP		R2
+		POP		R1
+
+	colidiu:
+		MOV		R5, 0
+		MOV		R6, R1
+		MOV 	R3, DEF_MISSIL
+		MOV		R1, [MISSIL_LINHA]
+		MOV		R2, [MISSIL_COLUNA]
+		CALL	apaga_objeto
+		MOV		R4, EXISTE_MISSIL
+		MOV		[R4], R5
+		MOV		R1, [R10+6]
+		MOV		R2, [R10+4]
+        MOV     R3, DEF_EXPLOSAO
+        CALL    desenha_objecto
+		MOV		R5, 1
+		MOV		[R6+10], R5				; objeto colidiu
+		
+		POP		R8
+		POP		R7
+		POP		R6
+		POP		R5
+		POP		R3
+		POP		R2
+		POP		R1
+		JMP		loop_inimigos
+
 	design_energia:
 		MOV		R7, R1
 		MOV		R8, 3		; de quantas em quantas linhas muda de fase
@@ -887,7 +933,7 @@ move_objetos:
 
 	objeto_nao_colidiu:
 		MOV		[R1+6], R2
-		CALL	desenha_inimigo
+		CALL	desenha_boneco
 		
 	fim_move_objeto:
 		POP		R8
