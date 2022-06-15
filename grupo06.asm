@@ -38,11 +38,6 @@ ALTURA_NAVE				EQU	4		; altura da nave
 LINHA_INICIAL_NAVE		EQU 28
 COLUNA_INICIAL_NAVE		EQU 30
 
-
-LINHA_INICIAL_INIM		EQU 0
-COLUNA_INICIAL_INIM		EQU 40
-
-
 LARGURA_OVNI1			EQU 1
 ALTURA_OVNI1			EQU 1
 LARGURA_OVNI2			EQU 2
@@ -103,8 +98,6 @@ NAVE_COLUNA:  	WORD COLUNA_INICIAL_NAVE		; coluna atual da nave
 NAVE_LINHA:		WORD LINHA_INICIAL_NAVE 		; linha atual da nave
 MISSIL_COLUNA:  WORD 0							; linha atual do missil
 MISSIL_LINHA:	WORD 0							; coluna atual do missil
-INIM_COLUNA:	WORD COLUNA_INICIAL_INIM 		; linha atual do inimigo
-INIM_LINHA: 	WORD LINHA_INICIAL_INIM  		; coluna atual do inimigo
 DISPLAY:		WORD DISPLAY_INICIAL			; valor atual no display
 EXISTE_MISSIL:  WORD 0							; 1 se já existir um missil no ecrã
 
@@ -236,7 +229,7 @@ VAL_DISPLAY:	; tabela que guarda múltiplos de 5 para usar no display
 	
 TECLAS:			; tabela que define a relação tecla:função
 	WORD		return, move_esquerda, move_direita, missil
-	WORD		inimigo, return, return, return
+	WORD		return, return, return, return
 	WORD		return, return, return, return
 	WORD		return, pause, return, game_over_pedido
 	
@@ -778,38 +771,6 @@ move_objetos:
 		MOV		[R5+8], R1
 		JMP		fim_move_objeto
 	
-
-; TEMPORÁRIA ------------
-return2:
-	RET
-
-inimigo:
-	CALL premida				; verifica quando a tecla deixa de ser premida
-	MOV R1, [INIM_LINHA]		; lê a linha atual do inimigo
-	MOV R4, 23
-	CMP R1, R4					; verificar se já antigiu o limite do ecrã
-	JZ 	return2
-	MOV R2, [INIM_COLUNA]		; lê a coluna atual do inimigo
-	MOV R3, DEF_INIMIGO_GRANDE	; endereço da tabela que define o inimigo	
-
-
-apaga_inimigo:       			; apaga o inimigo da posição onde estiver
-	CALL apaga_objeto
-
-PUSH 	R1
-MOV	 	R1, 1			    	; efeito sonoro do inimigo
-MOV  	[SOM], R1				; efeito sonoro toca
-POP 	R1
-
-desenha_linha_seguinte:
-	ADD	R1, 1					; para desenhar objeto na linha seguinte
-    MOV [INIM_LINHA], R1     	; atualiza numero da coluna na memória
-	CALL desenha_objecto
-	
-RET
-
-
-
 
 ; ***********************************************************************
 ; * Descrição:			Apaga todos os pixels de um objeto				*
