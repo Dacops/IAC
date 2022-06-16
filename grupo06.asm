@@ -501,14 +501,24 @@ display:
 	POP  R1
 	RET
 
-; decrementa o valor no display
-	decrementa_valor:
+
+	decrementa_valor:                   ; decrementa o valor no display
 		PUSH	R1
 		PUSH	R2
 		MOV		R1, [DISPLAY]			; endereço do valor atual na tabela de valores possíveis no display
-		SUB		R1, 2				; vai buscar a anterior word na tabela de valores (-5)
-		MOV		[DISPLAY], R1		; novo valor de energia
-		
+		SUB		R1, 2				    ; vai buscar a anterior word na tabela de valores (-5)
+		MOV		[DISPLAY], R1		    ; novo valor de energia
+        JMP     escreve_display
+
+    incrementa_valor:                   ; incrementa o valor no display
+        PUSH	R1
+		PUSH	R2
+		MOV		R1, [DISPLAY]			; endereço do valor atual na tabela de valores possíveis no display
+		ADD		R1, 2				    ; vai buscar a word seguinte na tabela de valores (+5)
+		MOV		[DISPLAY], R1		    ; novo valor de energia
+        JMP     escreve_display
+
+
 	; escreve valor no display
 	escreve_display:
 		MOV		R1, [DISPLAY]		; obtém atual endereço na tabela de valores de display
@@ -557,6 +567,13 @@ destroi_missil:
 	CALL	apaga_objeto
 	RET
 
+;----------------------------------------------------------------------------------------
+
+; rotinas + ou - a meio do programa para evitar calls a uma distância maior de 100H, dá erro 
+
+; rotina return, volta ao corpo principal do programa
+return:
+	RET
 
 ;--------------------------------------------------------------------------
 
@@ -594,11 +611,6 @@ destroi_missil:
 		RFE
 ;--------------------------------------------------------------------------------------------------------
 
-; rotinas + ou - a meio do programa para evitar calls a uma distância maior de 100H, dá erro 
-
-; rotina return, volta ao corpo principal do programa
-return:
-	RET
 
 
 ;-------------------------------------------------------------------------------------
@@ -812,14 +824,14 @@ move_objetos:
 		MOV		R2, [R5+4]	
 		MOV		R3, [R5+8]
 		
-		CMP		R9, 1		; vida em vez de inimigos
+		CMP		R9, 1		            ; vida em vez de inimigos
 		JZ		design_energia
 		MOV		R7, R1
-		MOV		R8, 3		; de quantas em quantas linhas muda de fase
+		MOV		R8, 3		            ; de quantas em quantas linhas muda de fase
 		DIV		R7, R8
-		CMP		R7, 4		; tabela de versões tem 5 elementos
+		CMP		R7, 4		            ; tabela de versões tem 5 elementos
 		JLT		atualiza_inimigo
-		MOV		R7,	4		; evita sair da tabela de versões
+		MOV		R7,	4		            ; evita sair da tabela de versões
 	
 	atualiza_inimigo:
 		SHL		R7, 1
@@ -868,6 +880,23 @@ move_objetos:
 		POP		R3
 		POP		R2
 		POP		R1
+        
+    verifica_objeto:
+        MOV     R7, [R10+8]                  ; acede ao tipo de objeto que é (inimigo ou energia)
+        MOV     R5, DEF_ENERGIA_PEQ
+        CMP     R7, R5
+        JZ      colidiu
+        MOV     R5, DEF_ENERGIA_MEDIO
+        CMP     R7, R5
+        JZ      colidiu
+        MOV     R5, DEF_ENERGIA_GRANDE
+        CMP     R7, R5
+        JZ      colidiu
+        MOV     R5, DEF_ENERGIA_ENORME
+        CMP     R7, R5
+        JZ      colidiu
+        CALL    incrementa_valor              ; soma 5 à energia da nave caso tenha atingido um inimigo
+        
 
 	colidiu:
 		MOV		R5, 0
@@ -893,6 +922,8 @@ move_objetos:
 		POP		R2
 		POP		R1
 		JMP		loop_inimigos
+
+    
 
 	design_energia:
 		MOV		R7, R1
