@@ -31,6 +31,8 @@ VIDEO			EQU 605CH      	; endereço do comando para selecionar o vídeo de fundo
 PARA_VIDEO		EQU 6066H		; endereço do comando para remover o vídeo de fundo
 IMAGEM			EQU 6042H		; endereço do comando para selecionar o imagem de fundo
 SOM				EQU 605AH      	; endereço do comando para selecionar efeitos sonoros
+TIRA_SOM		EQU 604CH		; remove o som especificado
+VOLTA_SOM		EQU	604EH		; tira o mute ao som especificado
 
 
 LARGURA_NAVE			EQU	5		; largura da nave
@@ -270,18 +272,13 @@ FASES_ENERGIA:	; relaciona linha com design atual da energia
 PLACE	0								; o código tem de começar em 0000H
 MOV  	SP, SP_inicial					; inicialização de SP
 MOV  	BTE, tab						; inicializa BTE (registo de Base da Tabela de Exceções)
-
-prepara_ecra:
-	MOV		R1, 0
-	MOV  	[APAGA_AVISO], R1				; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
-	MOV  	[APAGA_ECRA], R1				; apaga todos os pixels já desenhados (o valor de R1 não é relevante)
-	MOV		[IMAGEM], R1					; imagem de início de jogo
-	JMP		inicio_jogo
+JMP		prepara_ecra
 
 
 ; pausa o jogo
 pause:
 	MOV		R1, 1
+	MOV		[TIRA_SOM], R1				; tira o som de fundo
 	MOV  	[APAGA_AVISO], R1			; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
 	MOV  	[APAGA_ECRA], R1			; apaga todos os pixels já desenhados (o valor de R1 não é relevante)
 	MOV		[IMAGEM], R1				; imagem de início de jogo
@@ -304,6 +301,8 @@ pause_loop:
 	
 	MOV	 	R1, 0			    		; cenário de fundo número 0
 	MOV  	[VIDEO], R1					; cenário de fundo em loop
+	MOV		R1, 1
+	MOV		[VOLTA_SOM], R1					; se o som foi posto em mute anteriormente
 	
 	MOV 	R1, [NAVE_LINHA]			; linha atual da nave
 	MOV 	R2, [NAVE_COLUNA]			; coluna atual da nave
@@ -312,6 +311,11 @@ pause_loop:
 	
 	JMP		ciclo
 
+prepara_ecra:
+	MOV		R1, 0
+	MOV  	[APAGA_AVISO], R1				; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
+	MOV  	[APAGA_ECRA], R1				; apaga todos os pixels já desenhados (o valor de R1 não é relevante)
+	MOV		[IMAGEM], R1					; imagem de início de jogo
 
 ; espera pelo início do jogo, tecla C
 inicio_jogo:					
@@ -328,6 +332,9 @@ MOV		R11, [R2]
 MOV 	[R1], R11      					; inicializa display a 100
 MOV	 	R1, 0			    			; cenário de fundo número 0
 MOV  	[VIDEO], R1						; cenário de fundo em loop
+MOV		R1, 1
+MOV		[VOLTA_SOM], R1					; se o som foi posto em mute anteriormente
+MOV		[SOM], R1						; som de fundo
 
 ; interrupções começam quando o jogo começa
 EI0										; permite interrupções 0
@@ -376,11 +383,9 @@ reinicia_valores:
 	MOV		R1, LINHA_INICIAL_NAVE			; reinicia nave
 	MOV		[NAVE_LINHA], R1
 	MOV		R1, COLUNA_INICIAL_NAVE
-	MOV		[NAVE_COLUNA], R1
-	
+	MOV		[NAVE_COLUNA], R1	
 	MOV 	R1, DISPLAY_INICIAL				; reinicia display
-	MOV		[DISPLAY], R1
-	
+	MOV		[DISPLAY], R1	
 	MOV		R2, 0
 	MOV		R4, 4							; objetos a reiniciar
 	MOV		R3, 0CH							; distância entre tabelas
@@ -403,7 +408,7 @@ reinicia_valores:
 
 end_loop:
 	CALL 	teclado
-	MOV		R2, 0CH							; tecla B para reiniciar o jogo
+	MOV		R2, 0CH							; tecla C para reiniciar o jogo
 	CMP		R0, R2
 	JZ		prepara_ecra					; volta ao inicio do jogo
 	JMP		end_loop
@@ -412,12 +417,20 @@ game_over_pedido:
 	MOV		R1, 3
 	MOV  	[APAGA_AVISO], R1				; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
 	MOV		[IMAGEM], R1					; imagem de game over
+	MOV		R1, 1
+	MOV		[TIRA_SOM], R1					; remove o som de fundo
+	MOV		R1, 4
+	MOV		[SOM], R1						; som game over
 	JMP 	limpa_ecra
 	
 game_over_energia:
 	MOV		R1, 4
 	MOV  	[APAGA_AVISO], R1				; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
 	MOV		[IMAGEM], R1					; imagem de game over
+	MOV		R1, 1
+	MOV		[TIRA_SOM], R1					; remove o som de fundo
+	MOV		R1, 4
+	MOV		[SOM], R1						; som game over
 	JMP 	limpa_ecra
 
 ;-------------------------------------------------------------------------------------
@@ -634,6 +647,8 @@ missil:
 	CALL	desenha_objecto					; desenha o missil
 	MOV		[MISSIL_LINHA], R1
 	MOV		[MISSIL_COLUNA], R2
+	MOV		R1, 2
+	MOV		[SOM], R1						; som de disparo
 	CALL	decrementa_valor				; disparar um missil faz perder 5 unidades de energia
 	RET
 
@@ -902,6 +917,8 @@ move_objetos:
         CALL    desenha_objecto
 		MOV		R5, 1
 		MOV		[R6+10], R5				; objeto colidiu
+		MOV		R5, 3
+		MOV		[SOM], R5				; som explosão
 		
 		POP		R8
 		POP		R7
