@@ -3,11 +3,11 @@
 ; * Grupo 06															*
 ; * Elementos:															*
 ; * 	-> David Pires, nº 103458										*
-; *	-> Diogo Miranda, nº 102536											*
-; *	-> Mafalda Fernandes, nº 102702										*
+; *		-> Diogo Miranda, nº 102536										*
+; *		-> Mafalda Fernandes, nº 102702									*
 ; *																		*
 ; * Modulo:	grupo06.asm													*
-; * Descrição: 	Código assembly relativo ao Projeto Intermédio de IAC 	*
+; * Descrição: 	Código assembly relativo ao Projeto de IAC 				*
 ; *		2021/22, pronto a ser carregado no simulador.					*
 ; ***********************************************************************
 
@@ -34,8 +34,8 @@ SOM				EQU 605AH      	; endereço do comando para selecionar efeitos sonoros
 TIRA_SOM		EQU 604CH		; remove o som especificado
 VOLTA_SOM		EQU	604EH		; tira o mute ao som especificado
 
-LARGURA_NAVE			EQU	5		; largura da nave
-ALTURA_NAVE				EQU	4		; altura da nave
+LARGURA_NAVE			EQU	5
+ALTURA_NAVE				EQU	4
 LINHA_INICIAL_NAVE		EQU 28
 COLUNA_INICIAL_NAVE		EQU 30
 
@@ -88,7 +88,7 @@ MAX_COLUNA			EQU 63			; número da coluna mais à direita que o objeto pode ocup
 
 ATRASO				EQU	3000H		; atraso para limitar a velocidade de movimento da nave
 DISPLAY_INICIAL 	EQU 0
-LINHA_LIMITE_MISSIL EQU 7
+LINHA_LIMITE_MISSIL EQU 7			; linha que o missil pode atingir antes de desaparecer
 DELAY_EXPLOSAO		EQU 3			; ciclos que precisam de decorrer até a explosão ser apagada
 NUM_OBJETOS			EQU 4			; número de objetos que devem ser desenhados no ecrã
 
@@ -105,6 +105,8 @@ DISPLAY:		WORD DISPLAY_INICIAL			; valor atual no display
 EXISTE_MISSIL:  WORD 0							; 1 se já existir um missil no ecrã
 DELAY_EXPLOSAO_ATUAL: WORD DELAY_EXPLOSAO	    ; ciclos que precisam de decorrer até a explosão ser apagada
 NUM_OBJETOS_DESENHAR: WORD NUM_OBJETOS			; número de objetos que devem ser desenhados no ecrã
+
+
 
 ; ***********************************************************************
 ; * Dados																*
@@ -132,8 +134,11 @@ evento_int_energia:
 	WORD 0
 
 
-						
-DEF_NAVE:		; tabela que define o nave (cor,largura, pos inicial, pixels)
+
+;***************************************************;
+;		TABELAS QUE DEFINEM OS OBJETOS DO JOGO		;
+;***************************************************;
+DEF_NAVE:
 	WORD		LARGURA_NAVE
 	WORD		ALTURA_NAVE
 	WORD		0, 0, COR_CINZENTO, 0, 0
@@ -280,7 +285,9 @@ EXISTE_EXPLOSAO:
 
 
 ; ***********************************************************************
-; * Código																*
+;																		*
+; * CÓDIGO PRINCIPAL													*
+;																		*
 ; ***********************************************************************
 ; inicialização de periféricos					
 PLACE	0								; o código tem de começar em 0000H
@@ -291,18 +298,27 @@ EI1										; permite interrupções 1
 EI2										; permite interrupções 2
 EI										; permite interrupções gerais
 
-prepara_ecra:
+prepara_ecra:								; coloca no ecrã a imagem inicial do jogo e inicializa os displays
 	MOV		R1, 0
 	MOV  	[APAGA_AVISO], R1				; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
 	MOV  	[APAGA_ECRA], R1				; apaga todos os pixels já desenhados (o valor de R1 não é relevante)
+	MOV		[PARA_VIDEO], R1				; remove o vídeo de fundo
 	MOV		[IMAGEM], R1					; imagem de início de jogo
+	MOV		R1, 100H
+	MOV  	R3, DISPLAYS  					; endereço do periférico dos displays
+	MOV 	[R3], R1      					; inicializa display a 100
 	JMP		inicio_jogo
 
 
-; pausa o jogo
+; ***********************************************************************
+; *	PAUSAR O JOGO														*
+; *																		*
+; * Pausa o jogo mantendo a informação atual							*
+; * 																	*
+; ***********************************************************************
 pause:
 	MOV		R1, 1
-	MOV 	[TIRA_SOM], R1					; tira som de fundo
+	MOV 	[TIRA_SOM], R1				; tira som de fundo
 	MOV  	[APAGA_AVISO], R1			; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
 	MOV  	[APAGA_ECRA], R1			; apaga todos os pixels já desenhados (o valor de R1 não é relevante)
 	MOV		[IMAGEM], R1				; imagem de início de jogo
@@ -321,7 +337,7 @@ pause_loop:
 	MOV		R2, [DISPLAY]				; endereço do último valor no display
 	MOV		R3, [R2]					; último valor no display
 	MOV  	R1, DISPLAYS  				; endereço do periférico dos displays
-	MOV 	[R1], R3      				; inicializa display a 100
+	MOV 	[R1], R3      				; volta a colocar o valor nos displays
 	
 	MOV	 	R1, 0			    		; cenário de fundo número 0
 	MOV  	[VIDEO], R1					; cenário de fundo em loop_inimigos
@@ -335,36 +351,47 @@ pause_loop:
 	
 	JMP		ciclo
 
-
-; espera pelo início do jogo, tecla C
+; ***********************************************************************
+; *	INÍCIO DO JOGO														*
+; *																		*
+; * Espera que a tecla C sejaa premida para iniciar o jogo				*
+; * 																	*
+; ***********************************************************************
 inicio_jogo:					
 	CALL	teclado
 	MOV		R2, 0CH
 	CMP 	R0, R2					
 	JNZ		inicio_jogo
 	
-; inicializações de periféricos para o jogo
-MOV  	R1, DISPLAYS  					; endereço do periférico dos displays
-MOV		R2, VAL_DISPLAY+40				
-MOV		[DISPLAY], R2					; valor 100 da tabela de valores possíveis no display
-MOV		R11, [R2]
-MOV 	[R1], R11      					; inicializa display a 100
-MOV	 	R1, 0			    			; cenário de fundo número 0
-MOV  	[VIDEO], R1						; cenário de fundo em loop
-MOV 	R1, 1
-MOV		[VOLTA_SOM], R1					; tira o mute (se for posto)
-MOV 	[SOM], R1						; som de background
+	; inicializações de periféricos para o jogo
+	MOV  	R1, DISPLAYS  					; endereço do periférico dos displays
+	MOV		R2, VAL_DISPLAY+40				
+	MOV		[DISPLAY], R2					; valor 100 da tabela de valores possíveis no display
+	MOV		R11, [R2]
+	MOV 	[R1], R11      					; inicializa display a 100
+	MOV	 	R1, 0			    			; cenário de fundo número 0
+	MOV  	[VIDEO], R1						; cenário de fundo em loop
+	MOV 	R1, 1
+	MOV		[VOLTA_SOM], R1					; tira o mute (se for posto)
+	MOV 	[SOM], R1						; som de background
 
-; desenha a nave no ecrã no inicio do jogo
-desenha_nave_inicial:					; desenha a nave a partir da tabela
-	MOV 	R1, [NAVE_LINHA]
-	MOV 	[NAVE_LINHA], R1			; inicializa a linha da nave
-	MOV 	R2, [NAVE_COLUNA]
-	MOV 	[NAVE_COLUNA], R2			; inicializa a coluna da nave
-	MOV 	R3, DEF_NAVE				; endereço da tabela que define a nave
-	CALL 	desenha_objecto				; faz um desenho inicial da nave
+	; desenha a nave no ecrã no inicio do jogo
+	desenha_nave_inicial:					; desenha a nave a partir da tabela
+		MOV 	R1, [NAVE_LINHA]
+		MOV 	[NAVE_LINHA], R1			; inicializa a linha da nave
+		MOV 	R2, [NAVE_COLUNA]
+		MOV 	[NAVE_COLUNA], R2			; inicializa a coluna da nave
+		MOV 	R3, DEF_NAVE				; endereço da tabela que define a nave
+		CALL 	desenha_objecto				; faz um desenho inicial da nave
 
-; corpo principal do programa
+
+; ***********************************************************************
+; *	CORPO PRINCIPAL DO PROGRAMA											*
+; *																		*
+; * Zona principal onde todas as interrupções são atendidas e as		*
+; * ações correspondentes às teclas acontecem							*
+; * 																	*
+; ***********************************************************************
 ciclo:
 	MOV		R0, 0			; coloca sempre a tecla premida com um valor default
 	CALL 	teclado
@@ -379,17 +406,20 @@ ciclo:
 	CALL	R2
 	JMP		ciclo
 	
-
-
-; jogo terminado -----------------------------------------------------------------------------
-
+; ***********************************************************************
+; *	LOOP DE GAME OVER													*
+; *																		*
+; * Limpa o ecrã e coloca a imagem de game over. Espera que a tecla C	*
+; * seja premida para repor todos os valores relativos aos objetos e	*
+; * envia de volta para o início do jogo								*
+; * 																	*
+; ***********************************************************************
 end_loop:
 	CALL 	teclado
 	MOV		R2, 0CH							; tecla B para reiniciar o jogo
 	CMP		R0, R2
 	JZ		prepara_ecra					; volta ao inicio do jogo
 	JMP		end_loop
-
 
 limpa_ecra:
 	MOV  	[APAGA_ECRA], R1				; apaga todos os pixels já desenhados (o valor de R1 não é relevante)
@@ -447,6 +477,14 @@ fim_reiniciar:
 	POP 	R1
 	JMP		end_loop	
 
+
+; ***********************************************************************
+; *	GAME OVERS															*
+; *																		*
+; * Dependendo do tipo de game over coloca a imagem respetiva no ecrã   *
+; * e toca o som de game over. No fim envia para o LOOP DE GAME OVER	*
+; * 																	*
+; ***********************************************************************
 game_over_pedido:
 	MOV		R1, 3
 	MOV  	[APAGA_AVISO], R1				; apaga o aviso de nenhum cenário selecionado (o valor de R1 não é relevante)
@@ -470,8 +508,6 @@ game_over_colisao:
 	MOV	 	R1, 4			    			; efeito sonoro de game over
 	MOV  	[SOM], R1						; efeito sonoro toca
 	CALL 	limpa_ecra
-
-;-------------------------------------------------------------------------------------
 
 
 ; ***********************************************************************
@@ -535,9 +571,6 @@ premida:
 	RET
 
 
-
-		
-		
 ; ***********************************************************************
 ; * Descrição:			Incrementa/decrementa o display (Teclas 3/7)	*
 ; * Argumentos:			R0 - Tecla premida (em hexadecimal)				*
@@ -570,7 +603,6 @@ display:
 	POP  R1
 	RET
 
-
 	decrementa_valor:                   ; decrementa o valor no display
 		PUSH	R1
 		PUSH	R2
@@ -583,7 +615,7 @@ display:
         PUSH	R1
 		PUSH	R2
 		MOV		R1, [DISPLAY]			; endereço do valor atual na tabela de valores possíveis no display
-		ADD		R1, 4				    ; vai buscar a word seguinte na tabela de valores (+10)
+		ADD		R1, R4				    ; vai buscar a word pretendida à tabela de valores
 		MOV		[DISPLAY], R1		    ; novo valor de energia
         JMP     escreve_display
 
@@ -601,7 +633,14 @@ display:
 	POP 	R1
 	RET
 
-;-------------------------------------------------------------------------------
+; ***********************************************************************
+; *	MOVE MISSIL															*
+; *																		*
+; * Verifica se existe um míssil e se houve interrupção, se sim move    *
+; * o pixel que corresponde ao míssil uma linhas para cima. Se o 		*
+; * míssil chegar à linha limite, apaga-o								*
+; * 																	*
+; ***********************************************************************
 move_missil:
 	MOV		R1, [EXISTE_MISSIL]
 	CMP		R1, 1
@@ -636,17 +675,23 @@ destroi_missil:
 	CALL	apaga_objeto
 	RET
 
-;----------------------------------------------------------------------------------------
 
-; rotinas + ou - a meio do programa para evitar calls a uma distância maior de 100H, dá erro 
-
-; rotina return, volta ao corpo principal do programa
+; ***********************************************************************
+; *	ROTINA RETURN														*
+; * Volta ao corpo principal do programa							    *
+; * (encontra-se a meio para poder ser usada por todas as funções)		*
+; ***********************************************************************
 return:
 	RET
 
-;--------------------------------------------------------------------------
 
-; INTERRUPÇOES  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; ***********************************************************************
+; *	INTERRUPÇÕES														*
+; *																		*
+; * Rotinas de interrupção para o inimigo, o míssil e os displays de    *
+; * energia																*
+; * 																	*
+; ***********************************************************************
 	int_inimigo:					; Assinala o evento na componente 0 da variável evento_int
 		PUSH R0
 		PUSH R1
@@ -656,7 +701,6 @@ return:
 		POP  R1
 		POP  R0
 		RFE
-
 
 	int_missil:					; Assinala o evento na componente 0 da variável evento_int
 		PUSH R0
@@ -668,7 +712,6 @@ return:
 		POP  R0
 		RFE
 
-
 	int_energia:					; Assinala o evento na componente 0 da variável evento_int
 		PUSH R0
 		PUSH R1
@@ -678,11 +721,16 @@ return:
 		POP  R1
 		POP  R0
 		RFE
-;--------------------------------------------------------------------------------------------------------
 
 
-
-;-------------------------------------------------------------------------------------
+; ***********************************************************************
+; *	DESENHAR O MISSIL													*
+; *																		*
+; * Se a tecla 3 é pressionada vai desenhar o míssil por cima da nave   *
+; * e decrementar 5 unidades dos displays de energia uma vez que 		*
+; * disparar um missil consome energia									*
+; * 																	*
+; ***********************************************************************
 missil:
 	MOV		R1, [EXISTE_MISSIL]				; verifica se já existe um missil no ecrã
 	CMP		R1, 1
@@ -706,13 +754,7 @@ missil:
 	CALL	decrementa_valor				; disparar um missil faz perder 5 unidades de energia
 	RET
 
-; DECRESCE 5 UNIDADES NO DISPLAY
 
-
-;-------------------------------------------------------------------------------------
-
-
-	
 ; ***********************************************************************
 ; * Descrição:			Movimenta a nave de forma contínua (Teclas 1/2)	*
 ; * Argumentos:			R0 - Tecla premida (em hexadecimal)				*
@@ -759,14 +801,12 @@ ciclo_atraso:
 RET
 
 
-
 ; ***********************************************************************
 ; * Descrição:			Movimenta o inimigo pixel a pixel (Tecla 4)		*
 ; * Argumentos:			R0 - Tecla premida (em hexadecimal)				*
 ; *						2006H - linha atual do inimigo					*
 ; * Saídas:				2006H - nova linha atual do inimigo				*
-; ***********************************************************************		
-
+; ***********************************************************************
 move_objetos:
 	PUSH	R1
 	PUSH	R2
@@ -790,7 +830,8 @@ move_objetos:
 
 	MOV		R11, DEF_INIMIGO1				; tabela do 1o inimigo
 	
-	loop_inimigos:							; loop que percorre todos os objetos que se movem sozinhos
+	; loop que percorre todos os objetos que se movem sozinhos
+	loop_inimigos:
 		CALL	verifica_explosao
         MOV		R2, [R11]
         CMP		R2, 0						; verifica se o objeto em questão já foi gerado
@@ -824,46 +865,273 @@ move_objetos:
 		POP		R2
 		POP		R1
 		RET
+
+	; ***********************************************************************
+	; *	APAGA EXPLOSÃO														*
+	; *																		*
+	; * Verifica se o delay da explosão terminou. Se sim reinicia o delay	*
+	; * com o valor original, a informação da explosão e apaga a explosão	*
+	; * do ecrã																*
+	; * 																	*
+	; ***********************************************************************
+	apaga_explosao:
+			PUSH	R1
+			PUSH	R2
+			PUSH	R3
+			PUSH	R4
+
+			MOV		R4, [DELAY_EXPLOSAO_ATUAL]		; verifica se já terminou o delay da explosão
+			SUB		R4, 1
+			MOV		[DELAY_EXPLOSAO_ATUAL], R4
+			CMP		R4, 0
+			JNZ		sai_apaga_explosao				; se não passa para o objeto seguinte para voltar mais tarde
+			MOV		R4, DELAY_EXPLOSAO				; volta a guardar o delay default
+			MOV		[DELAY_EXPLOSAO_ATUAL], R4
+			MOV		R4, EXISTE_EXPLOSAO
+			MOV		R1, [R4+2]
+			MOV		R2, [R4+4]
+			MOV		R3, DEF_EXPLOSAO
+			CALL	apaga_objeto					; apaga a explosão se o delay tiver terminado
+			MOV		R1, 0
+			MOV		R4, EXISTE_EXPLOSAO
+			MOV 	[R4], R1						; reinicia os valores da explosão
+			MOV		[R4+2], R1
+			MOV		[R4+4], R1
+
+		sai_apaga_explosao:
+			POP 	R4
+			POP 	R3
+			POP 	R2
+			POP 	R1
+			RET
+
 	
+	; rotina que verifica se existe uma explosão a decorrer no momento
 	verifica_explosao:
 		MOV		R2, [EXISTE_EXPLOSAO]
 		CMP		R2, 0
 		JNZ		apaga_explosao				; se existir uma explosão no ecrã vai apagá-la
 		RET
+	
+	; rotina que vai buscar as informações do boneco a desenhar e desenha-o
+	desenha_boneco:
+			MOV		R2, [R11+4]
+			MOV		R1, [R11+6]
+			MOV		R3, [R11+8]
+			CALL 	desenha_objecto
+			RET
 
-	apaga_explosao:
+
+; ***********************************************************************
+; *	MOVE OBJETO														    *
+; *																		*
+; * Rotina que verifica qual o objeto a desenhar, verifica se não		*
+; * existem colisões e os desenha, se for o caso						*
+; * 																	*
+; ***********************************************************************
+	move_objeto:
 		PUSH	R1
 		PUSH	R2
 		PUSH	R3
-		PUSH	R4
+		PUSH	R5
+		PUSH	R6
+		PUSH	R7
+		PUSH	R8
+		PUSH	R9
+		
+		MOV		R1, [R11+6]					; vai buscar informação sobre onde está o objeto
+		MOV		R2, [R11+4]	
+		MOV		R3, [R11+8]
+		
+		MOV		R9, [NUM_OBJETOS_DESENHAR]
+		CMP		R9, 1						; verifica que tipo de objeto é (inimigo ou energia)
+		JZ		objeto_energia
+		JMP 	objeto_inimigo
 
-		MOV		R4, [DELAY_EXPLOSAO_ATUAL]		; verifica se já terminou o delay da explosão
-		SUB		R4, 1
-		MOV		[DELAY_EXPLOSAO_ATUAL], R4
-		CMP		R4, 0
-		JNZ		sai_apaga_explosao				; se não passa para o objeto seguinte para voltar mais tarde
-		MOV		R4, DELAY_EXPLOSAO				; volta a guardar o delay default
-		MOV		[DELAY_EXPLOSAO_ATUAL], R4
-		MOV		R4, EXISTE_EXPLOSAO
-		MOV		R1, [R4+2]
-		MOV		R2, [R4+4]
-		MOV		R3, DEF_EXPLOSAO
-		CALL	apaga_objeto					; apaga a explosão se o delay tiver terminado
+	;---------------------------------------------------------------;
+	; Se o objeto for um inimigo, verifica se houve colisão com o	;
+	; missil ou com a nave, em caso negativo verifica se o inimigo  ;
+	; está numa linha em que deve mudar o seu aspeto e desenha-o	;
+	;---------------------------------------------------------------;
+		objeto_inimigo:
+			CALL	verifica_colisao_missil
+			MOV		R7, [R11+10]
+			CMP		R7, 1
+			JZ		colisao_missil				; se colidiu com o missil
+			CALL	verifica_colisao_nave
+			MOV		R7, [R11+10]
+			CMP		R7, 1
+			JZ		inimigo_colidiu_nave		; se colidiu com a nave
+			MOV		R7, R1
+			MOV		R8, 3		            	; de quantas em quantas linhas muda de fase
+			DIV		R7, R8
+			CMP		R7, 4		            	; tabela de versões tem 5 elementos
+			JLT		atualiza_inimigo			; verifica se o objeto deve mudar de fase
+			MOV		R7,	4		            	; evita sair da tabela de versões
+		
+		atualiza_inimigo:
+			SHL		R7, 1
+			MOV		R8, FASES_INIMIGO
+			ADD		R7, R8
+			MOV		R3, [R7]
+			MOV		[R11+8], R3					; se o inimigo estiver na fase de evoluir, atualiza a fase na sua informaçao
+			CALL	desenha_boneco
+			JMP		fim_atualização
+
+	;---------------------------------------------------------------;
+	; Se o objeto for uma energia, verifica se houve colisão com o	;
+	; missil ou com a nave, em caso negativo verifica se a energia  ;
+	; está numa linha em que deve mudar o seu aspeto e desenha-a	;
+	;---------------------------------------------------------------;
+		objeto_energia:
+			CALL	verifica_colisao_missil
+			MOV		R7, [R11+10]
+			CMP		R7, 1
+			JZ		colisao_missil				; se colidiu com o missil
+			CALL	verifica_colisao_nave
+			MOV		R7, [R11+10]
+			CMP		R7, 1
+			JZ		energia_colidiu_nave		; se colidiu com a nave
+			MOV		R7, R1
+			MOV		R8, 3						; de quantas em quantas linhas muda de fase
+			DIV		R7, R8
+			CMP		R7, 5						; tabela de versões tem 6 elementos
+			JLT		atualiza_energia			; verifica se o objeto deve mudar de fase
+			MOV		R7,	5						; evita sair da tabela de versões
+		
+		atualiza_energia:
+			SHL		R7, 1
+			MOV		R8, FASES_ENERGIA
+			ADD		R7, R8
+			MOV		R3, [R7]
+			MOV		[R11+8], R3					; se a energia estiver na fase de evoluir, atualiza a fase na sua informaçao
+			JMP		fim_atualização
+			
+		fim_atualização:
+			MOV		R6, 01FH
+			CMP		R1, R6
+			JZ		nova_geração
+			
+			CALL	apaga_objeto
+			MOV		R1, [R11+6]
+			ADD		R1, 1
+			MOV		[R11+6], R1
+			CALL	desenha_boneco
+			JMP		fim_move_objeto
+
+	;---------------------------------------------------------------;
+	; Se o objeto colidiu com um missil, apaga o missil do ecrã,	;
+	; apaga o objeto do ecrã, desenha a explosão no ecrã e aumenta	;
+	; o valor no display se o objeto que colidiu for um inimigo		;
+	;---------------------------------------------------------------;
+		colisao_missil:
+			PUSH	R1
+			PUSH	R2
+			PUSH	R3
+			MOV		R1, [MISSIL_LINHA]
+			MOV		R2, [MISSIL_COLUNA]
+			MOV 	R3, DEF_MISSIL
+			CALL	apaga_objeto				; apagar o missil do ecrã
+			POP		R3
+			POP		R2
+			POP		R1
+
+			MOV		R5, 0
+			MOV		[EXISTE_MISSIL], R5			; atualiza informação do missil para não existente
+			CALL	apaga_objeto
+
+			MOV 	[R11], R5						; reinicia os valores do objeto que explodiu
+			MOV		[R11+4], R5
+			MOV		[R11+6], R5
+			MOV		[R11+8], R5
+			MOV		[R11+10], R5
+
+			desenha_explosao:
+				MOV     R3, DEF_EXPLOSAO			; desenha a explosao no ecrã
+				CALL    desenha_objecto
+				MOV		R6, 3
+				MOV 	[SOM], R6					; som explosão
+				MOV 	R6, 1
+				MOV		R5, EXISTE_EXPLOSAO			; atualiza as informações relativas à explosão
+				MOV		[R5], R6
+				MOV		[R5+2], R1
+				MOV		[R5+4], R2
+
+			verifica_qual_objeto:
+				MOV		R9, [NUM_OBJETOS_DESENHAR]
+				CMP		R9, 1						; verifica que tipo de objeto é (inimigo ou energia)
+				JZ		fim_move_objeto
+				
+			explodiu_inimigo:						; se o missil explodiu um inimigo aumenta 5 unidades no display
+				MOV		R4, 2
+				CALL	incrementa_valor
+				JMP		fim_move_objeto
+
+	;---------------------------------------------------------------;
+	; Se um inimigo colidiu com a nave, reencaminha para o game		;
+	; over de colisão												;
+	;---------------------------------------------------------------;
+		inimigo_colidiu_nave:
+			MOV		R7, 0
+			MOV		[R11+10], R7
+			JMP		game_over_colisao
+
+	;---------------------------------------------------------------;
+	; Se uma energia colidiu com a nave, apaga a energia, toca   	;
+	; o efeito sonoro correspondente e aumenta os displays de		;
+	; energia em 10 unidades										;
+	;---------------------------------------------------------------;
+		energia_colidiu_nave:
+			PUSH	R4
+			CALL	apaga_objeto				; apaga a energia
+			MOV		R4, 0
+			MOV 	[R11], R4					; reinicia os valores da energia que foi consumida
+			MOV		[R11+4], R4
+			MOV		[R11+6], R4
+			MOV		[R11+8], R4
+			MOV		[R11+10], R4
+			MOV 	R4, 5
+			MOV 	[SOM], R4
+			MOV		R4, 4						; vai-se buscar o valor de energia que está duas words à frente do atual
+			CALL	incrementa_valor			; incrementa 10 unidades na energia da nave
+			POP		R4
+			JMP		fim_move_objeto
+
+
+	fim_move_objeto:
+		POP		R9
+		POP		R8
+		POP		R7
+		POP		R6
+		POP		R5
+		POP		R3
+		POP		R2
+		POP		R1
+		JMP		sai_move_objetos
+
+;---------------------------------------------------------------;
+; Se o objeto chegou ao fim do ecrã, apaga-o e reinicia os		;
+; valores correspondentes a esse objeto							;
+;---------------------------------------------------------------;
+	nova_geração:
+		CALL	apaga_objeto
 		MOV		R1, 0
-		MOV		R4, EXISTE_EXPLOSAO
-		MOV 	[R4], R1						; reinicia os valores da explosão
-		MOV		[R4+2], R1
-		MOV		[R4+4], R1
+		MOV 	[R11], R1
+		MOV		[R11+4], R1
+		MOV		[R11+6], R1
+		MOV		[R11+8], R1
+		JMP		fim_move_objeto
 
-	sai_apaga_explosao:
-		POP 	R4
-		POP 	R3
-		POP 	R2
-		POP 	R1
-		RET
-	
-	
-	collatz:							; função que cria uma coluna aleatória
+
+; ***********************************************************************
+; *	GERA COLUNA ALEATÓRIA												*
+; *																		*
+; * Recebe uma "seed" que cada objeto tem na tabela que o define, 		*
+; * gera outro número de forma caótica a partir dessa "seed", esse 		*
+; * número é utilizado para escolher uma coluna random.					*
+; * Explicação mais detalhada no relatório que acompanha o código		*
+; ***********************************************************************
+collatz:								; função que cria uma coluna aleatória
 		PUSH	R1
 		PUSH	R2
 		PUSH	R3
@@ -909,198 +1177,36 @@ move_objetos:
 			POP		R1
 			RET
 
-	desenha_boneco:
-			MOV		R2, [R11+4]
-			MOV		R1, [R11+6]
-			MOV		R3, [R11+8]
-			CALL 	desenha_objecto
-			RET
+; ***********************************************************************
+; *	VERIFICA COLISÃO COM O MISSIL										*
+; *																		*
+; * Verifica se o objeto foi atingido pelo missil						*
+; * Se sim, atualiza a informação do objeto para informar que houve 	*
+; * uma colisão															*
+; * 																	*
+; ***********************************************************************
+verifica_colisao_missil:
+	PUSH	R1
+	PUSH	R2
+	PUSH	R4
+	PUSH	R5
+	PUSH	R6
 
-
-	move_objeto:
-		PUSH	R1
-		PUSH	R2
-		PUSH	R3
-		PUSH	R5
-		PUSH	R6
-		PUSH	R7
-		PUSH	R8
-		PUSH	R9
-		
-		MOV		R1, [R11+6]					; vai buscar informação sobre onde está o objeto
-		MOV		R2, [R11+4]	
-		MOV		R3, [R11+8]
-		
-		MOV		R9, [NUM_OBJETOS_DESENHAR]
-		CMP		R9, 1						; verifica que tipo de objeto é (inimigo ou energia)
-		JZ		objeto_energia
-		JMP 	objeto_inimigo
-
-
-	objeto_inimigo:
-		CALL	verifica_colisao_missil
-		MOV		R7, [R11+10]
-		CMP		R7, 1
-		JZ		colisao_missil				; se colidiu com o missil
-		CALL	verifica_colisao_nave
-		MOV		R7, [R11+10]
-		CMP		R7, 1
-		JZ		inimigo_colidiu_nave		; se colidiu com a nave
-		MOV		R7, R1
-		MOV		R8, 3		            	; de quantas em quantas linhas muda de fase
-		DIV		R7, R8
-		CMP		R7, 4		            	; tabela de versões tem 5 elementos
-		JLT		atualiza_inimigo			; verifica se o objeto deve mudar de fase
-		MOV		R7,	4		            	; evita sair da tabela de versões
-	
-	atualiza_inimigo:
-		SHL		R7, 1
-		MOV		R8, FASES_INIMIGO
-		ADD		R7, R8
-		MOV		R3, [R7]
-		MOV		[R11+8], R3					; se o inimigo estiver na fase de evoluir, atualiza a fase na sua informaçao
-		CALL	desenha_boneco
-		JMP		fim_atualização
-
-	objeto_energia:
-		CALL	verifica_colisao_missil
-		MOV		R7, [R11+10]
-		CMP		R7, 1
-		JZ		colisao_missil				; se colidiu com o missil
-		CALL	verifica_colisao_nave
-		MOV		R7, [R11+10]
-		CMP		R7, 1
-		JZ		energia_colidiu_nave		; se colidiu com a nave
-		MOV		R7, R1
-		MOV		R8, 3						; de quantas em quantas linhas muda de fase
-		DIV		R7, R8
-		CMP		R7, 5						; tabela de versões tem 6 elementos
-		JLT		atualiza_energia			; verifica se o objeto deve mudar de fase
-		MOV		R7,	5						; evita sair da tabela de versões
-	
-	atualiza_energia:
-		SHL		R7, 1
-		MOV		R8, FASES_ENERGIA
-		ADD		R7, R8
-		MOV		R3, [R7]
-		MOV		[R11+8], R3					; se a energia estiver na fase de evoluir, atualiza a fase na sua informaçao
-		JMP		fim_atualização
-		
-	
-	fim_atualização:
-		MOV		R6, 01FH
-		CMP		R1, R6
-		JZ		nova_geração
-		
-		CALL	apaga_objeto
-		MOV		R1, [R11+6]
-		ADD		R1, 1
-		MOV		[R11+6], R1
-		CALL	desenha_boneco
-		JMP		fim_move_objeto
-
-
-	colisao_missil:
-		PUSH	R1
-		PUSH	R2
-		PUSH	R3
-		MOV		R1, [MISSIL_LINHA]
-		MOV		R2, [MISSIL_COLUNA]
-		MOV 	R3, DEF_MISSIL
-		CALL	apaga_objeto				; apagar o missil do ecrã
-		POP		R3
-		POP		R2
-		POP		R1
-
-		MOV		R5, 0
-		MOV		[EXISTE_MISSIL], R5			; atualiza informação do missil para não existente
-		CALL	apaga_objeto
-		MOV 	[R11], R5						; reinicia os valores do objeto que explodiu
-		MOV		[R11+4], R5
-		MOV		[R11+6], R5
-		MOV		[R11+8], R5
-		MOV		[R11+10], R5
-        MOV     R3, DEF_EXPLOSAO			; desenha a explosao no ecrã
-		CALL    desenha_objecto
-		MOV		R6, 3
-		MOV 	[SOM], R6					; som explosão
-		MOV 	R6, 1
-		MOV		R5, EXISTE_EXPLOSAO
-		MOV		[R5], R6
-		MOV		[R5+2], R1
-		MOV		[R5+4], R2
-		POP		R9
-		POP		R8
-		POP		R7
-		POP		R6
-		POP		R5
-		POP		R3
-		POP		R2
-		POP		R1
-		JMP		sai_move_objetos
-
-	inimigo_colidiu_nave:
-		MOV		R7, 0
-		MOV		[R11+10], R7
-		JMP		game_over_colisao
-
-	energia_colidiu_nave:
-		PUSH	R4
-		CALL	apaga_objeto				; apaga a energia
-		MOV		R4, 0
-		MOV 	[R11], R4					; reinicia os valores da energia que foi consumida
-		MOV		[R11+4], R4
-		MOV		[R11+6], R4
-		MOV		[R11+8], R4
-		MOV		[R11+10], R4
-		CALL	incrementa_valor			; incrementa 5 unidades na energia da nave
-		MOV 	R4, 5
-		MOV 	[SOM], R4
-		POP		R4
-		JMP		fim_move_objeto
-
-
-	fim_move_objeto:
-		POP		R9
-		POP		R8
-		POP		R7
-		POP		R6
-		POP		R5
-		POP		R3
-		POP		R2
-		POP		R1
-		JMP		sai_move_objetos
-
-	nova_geração:
-		CALL	apaga_objeto
-		MOV		R1, 0
-		MOV 	[R11], R1
-		MOV		[R11+4], R1
-		MOV		[R11+6], R1
-		MOV		[R11+8], R1
-		JMP		fim_move_objeto
-
-
-
-;----- VERIFICAÇÕES GERAIS DE COLISOES COM MISSIL E NAVE --------------------------	
-
-	verifica_colisao_missil:
-		PUSH	R1
-		PUSH	R2
-		PUSH	R4
-		PUSH	R5
-		PUSH	R6
-
+	verifica_existencia_missil:
 		MOV 	R4, [MISSIL_LINHA]
 		MOV		R5, [MISSIL_COLUNA]
 		MOV 	R6, [EXISTE_MISSIL]
 		CMP		R6, 0
 		JZ		sai_verifica_colisao_missil	; se não existe missil então não colidiu
+
+	verifica_linha_missil:
 		MOV		R6, [R3+2]					; vai buscar a altura do objeto
 		ADD		R1, R6						; soma a sua altura à linha atual do objeto
 		ADD		R1, 1
 		CMP		R1, R4						
 		JLT		sai_verifica_colisao_missil	; se o missil está abaixo do objeto então não colidiu
+
+	verifica_coluna_missil:
 		CMP		R5, R2
 		JLT		sai_verifica_colisao_missil	; se o missil está à esquerda do objeto então não colidiu
 		MOV		R6, [R3]					; vai buscar a largura do objeto
@@ -1109,8 +1215,8 @@ move_objetos:
 		JLE		colidiu_missil				; se o missil estiver acima na área do objeto então colidiu
 		JMP		sai_verifica_colisao_missil
 
-	
-	colidiu_missil:
+
+	colidiu_missil:							; se colidiu atualiza a informação do objeto
 		MOV		R6, 1
 		MOV		[R11+10], R6
 
@@ -1123,33 +1229,45 @@ move_objetos:
 		RET
 
 
+; ***********************************************************************
+; *	VERIFICA COLISÃO COM A NAVE											*
+; *																		*
+; * Verifica se o objeto colidiu com a nave								*
+; * Se sim, atualiza a informação do objeto para informar que houve 	*
+; * uma colisão															*
+; * 																	*
+; ***********************************************************************
+verifica_colisao_nave:
+	PUSH	R1
+	PUSH	R2
+	PUSH	R4
+	PUSH	R5
+	PUSH	R6
+	PUSH 	R7
+	PUSH	R8
+	PUSH	R9
 
-	verifica_colisao_nave:
-		PUSH	R1
-		PUSH	R2
-		PUSH	R4
-		PUSH	R5
-		PUSH	R6
-		PUSH 	R7
-		PUSH	R8
-		PUSH	R9
+	MOV		R6, [NAVE_LINHA]			; recolha de informação sobre a nave
+	MOV		R7, [NAVE_COLUNA]
+	MOV		R4, DEF_NAVE
+	MOV		R8, [R4]					; largura da nave
+	MOV		R9, [R4+2]					; altura da nave
 
-		MOV		R6, [NAVE_LINHA]			; recolha de informação sobre a nave
-		MOV		R7, [NAVE_COLUNA]
-		MOV		R4, DEF_NAVE
-		MOV		R8, [R4]					; largura da nave
-		MOV		R9, [R4+2]					; altura da nave
-
+	verifica_linha_nave:
 		MOV		R4, [R3+2]					; vai buscar a altura do objeto
 		ADD		R1, R4						; soma a sua altura à linha atual do objeto
 		ADD		R1, 1
 		CMP		R1, R6						
 		JLT		sai_verifica_colisao_nave	; se a nave está abaixo do objeto então não colidiu
+
+	verifica_esquerda_do_objeto:
 		MOV		R10, R7						; cópia da coluna da nave
 		ADD		R10, R8
 		ADD		R10, 1
 		CMP		R10, R2
 		JLT		sai_verifica_colisao_nave	; se a nave está à esquerda do objeto então não colidiu
+
+	verifica_direita_do_objeto:
 		MOV		R5, [R3+2]					; vai buscar a largura do objeto
 		ADD		R2, R5						; soma a sua largura à coluna atual do objeto
 		ADD		R2, 1
@@ -1157,8 +1275,7 @@ move_objetos:
 		JLE		colidiu_nave				; se o missil estiver acima na área do objeto então colidiu
 		JMP		sai_verifica_colisao_nave
 
-
-	colidiu_nave:
+	colidiu_nave:							; se colidiu atualiza a informação do objeto
 		MOV		R6, 1
 		MOV		[R11+10], R6
 
@@ -1173,11 +1290,6 @@ move_objetos:
 		POP		R1
 		RET
 
-;--------------------------------------------------------------------------------------------------
-
-
-		
-	
 	
 
 ; ***********************************************************************
