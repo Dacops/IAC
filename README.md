@@ -13,7 +13,7 @@
         - mover nave (esq e dir)<br>
         - disparar missil<br><br><br>
 
-      INFO IMPORTANTE<br>
+      INFO IMPORTANTE
         - disparar um missil gasta energia adicional (5 unidades)
         - cada vez que um objeto colide com a nave ou perde-se no fundo do ecrã, nasce um novo no topo
         - apanhar um coraçao aumenta a enrgia
