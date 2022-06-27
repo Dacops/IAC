@@ -34,6 +34,5 @@
         - movimento meteoros    -  400  ms
         - movimento missil      -  200  ms
         - diminui energia nave  -  3000 ms
-    </p>
   </body>
 </html>
